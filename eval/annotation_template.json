@@ -1,0 +1,56 @@
+[
+  {
+    "report_id": "EXAMPLE-APT28-FANCYBEAR-2024",
+    "synthetic": false,
+    "source_file": "APT28_Cyber_Espionage_2024.pdf",
+    "notes": "Template record showing how human analysts should annotate real threat reports.",
+    "pages": [
+      {
+        "page_number": 1,
+        "page_text": "Executive Summary: In March 2024, threat actors associated with APT28 exploited CVE-2023-38831 to deliver payloads. Initial C2 communication reached out to 198.51.100.45 and secondary nodes at evil-update[.]org."
+      },
+      {
+        "page_number": 2,
+        "page_text": "Technical Analysis: Payloads identified include backdoor.exe (SHA256: d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2). The dropper contacted hxxps://badsite[.]com/api/beacon."
+      }
+    ],
+    "ground_truth": [
+      {
+        "type": "cve",
+        "value": "CVE-2023-38831",
+        "page_number": 1,
+        "notes": "WinRAR vulnerability used for initial execution"
+      },
+      {
+        "type": "ipv4",
+        "value": "198.51.100.45",
+        "page_number": 1,
+        "notes": "Routable external C2 IP"
+      },
+      {
+        "type": "domain",
+        "value": "evil-update.org",
+        "page_number": 1,
+        "notes": "Defanged domain normalized in ground truth"
+      },
+      {
+        "type": "sha256",
+        "value": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+        "page_number": 2,
+        "notes": "SHA-256 hash of backdoor payload"
+      },
+      {
+        "type": "url",
+        "value": "https://badsite.com/api/beacon",
+        "page_number": 2,
+        "notes": "Refanged beacon URL"
+      },
+      {
+        "type": "domain",
+        "value": "badsite.com",
+        "page_number": 2,
+        "notes": "Host domain extracted from beacon URL"
+      }
+    ]
+  }
+]

@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ThreatMapLiteIOCAnnotationDataset",
+  "description": "Schema for ThreatMap Lite IOC Ground-Truth Evaluation Datasets",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["report_id", "pages", "ground_truth"],
+    "properties": {
+      "report_id": {
+        "type": "string",
+        "description": "Unique identifier for the threat intelligence report (e.g., Mandiant-APT29-2023)."
+      },
+      "synthetic": {
+        "type": "boolean",
+        "default": false,
+        "description": "True if the report is a synthetic fixture; False if based on a real threat document."
+      },
+      "source_file": {
+        "type": "string",
+        "description": "Original PDF filename or reference document URL."
+      },
+      "pages": {
+        "type": "array",
+        "description": "List of extracted pages from the report.",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "required": ["page_number"],
+          "properties": {
+            "page_number": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "1-based page number."
+            },
+            "page_text": {
+              "type": "string",
+              "description": "Full extracted plain text of the page."
+            },
+            "text": {
+              "type": "string",
+              "description": "Alternative alias for page_text."
+            }
+          },
+          "anyOf": [
+            { "required": ["page_text"] },
+            { "required": ["text"] }
+          ]
+        }
+      },
+      "ground_truth": {
+        "type": "array",
+        "description": "List of human-verified IOC ground-truth annotations.",
+        "items": {
+          "type": "object",
+          "required": ["type", "value"],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["ipv4", "domain", "url", "md5", "sha1", "sha256", "cve"],
+              "description": "Category of the Indicator of Compromise."
+            },
+            "value": {
+              "type": "string",
+              "description": "Normalized indicator string (e.g., lowercase hash, standard IP)."
+            },
+            "page_number": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page on which this indicator first appears or is referenced."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Human analyst notes regarding attribution, C2 role, or context."
+            }
+          }
+        }
+      }
+    }
+  }
+}

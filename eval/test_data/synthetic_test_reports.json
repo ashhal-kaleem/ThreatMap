@@ -1,0 +1,106 @@
+[
+  {
+    "report_id": "SYNTHETIC-REPORT-001-MULTI-IOC",
+    "synthetic": true,
+    "source_file": "synthetic_report_01.pdf",
+    "notes": "Synthetic benchmark report containing positive examples for all 7 IOC categories plus negative distractors (private IPs, file extensions).",
+    "pages": [
+      {
+        "page_number": 1,
+        "page_text": "Executive Threat Summary:\nDuring the incident triage, security analysts identified activity targeting CVE-2021-44228 (Log4Shell). The adversaries connected from external IP 203.0.113.15 to pivot into internal host 192.168.1.100 (which is private and ignored). Secondary beaconing was observed communicating with hxxps://update-check[.]net/payload.bin and raw domain c2-telemetry[.]com.\nLocal forensic analysis examined suspicious files report.pdf and setup.exe."
+      },
+      {
+        "page_number": 2,
+        "page_text": "Forensic Hash Artifacts:\nThe dropped artifact exhibits the following cryptographic checksums:\nMD5: 5d41402abc4b2a76b9719d911017c592\nSHA1: 2aae6c35c94fcfb415dbe95f408b9ce91ee846ed\nSHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nAdditionally, a fallback C2 address was observed at 198.51.100.22."
+      }
+    ],
+    "ground_truth": [
+      {
+        "type": "cve",
+        "value": "CVE-2021-44228",
+        "page_number": 1,
+        "notes": "Log4Shell vulnerability"
+      },
+      {
+        "type": "ipv4",
+        "value": "203.0.113.15",
+        "page_number": 1,
+        "notes": "External routable adversary IP"
+      },
+      {
+        "type": "url",
+        "value": "https://update-check.net/payload.bin",
+        "page_number": 1,
+        "notes": "Refanged payload download URL"
+      },
+      {
+        "type": "domain",
+        "value": "update-check.net",
+        "page_number": 1,
+        "notes": "Host domain extracted from payload URL"
+      },
+      {
+        "type": "domain",
+        "value": "c2-telemetry.com",
+        "page_number": 1,
+        "notes": "Defanged C2 domain"
+      },
+      {
+        "type": "md5",
+        "value": "5d41402abc4b2a76b9719d911017c592",
+        "page_number": 2,
+        "notes": "Sample MD5 hash"
+      },
+      {
+        "type": "sha1",
+        "value": "2aae6c35c94fcfb415dbe95f408b9ce91ee846ed",
+        "page_number": 2,
+        "notes": "Sample SHA1 hash"
+      },
+      {
+        "type": "sha256",
+        "value": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "page_number": 2,
+        "notes": "Empty string SHA-256 hash"
+      },
+      {
+        "type": "ipv4",
+        "value": "198.51.100.22",
+        "page_number": 2,
+        "notes": "Fallback C2 IPv4"
+      }
+    ]
+  },
+  {
+    "report_id": "SYNTHETIC-REPORT-002-HASHES-AND-CVES",
+    "synthetic": true,
+    "source_file": "synthetic_report_02.pdf",
+    "notes": "Synthetic report focused on hashes, CVEs, and defanged domains; contains zero IPv4 or URL ground-truth to test partial category coverage.",
+    "pages": [
+      {
+        "page_number": 1,
+        "page_text": "Advisory on Ransomware Campaign:\nThreat groups have begun exploiting CVE-2023-23397 (Microsoft Outlook EoP). The payload staged on compromised staging servers has SHA-256 hash 4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a. Phishing domains utilized: login[dot]microsoft-verify[dot]org."
+      }
+    ],
+    "ground_truth": [
+      {
+        "type": "cve",
+        "value": "CVE-2023-23397",
+        "page_number": 1,
+        "notes": "Outlook EoP CVE"
+      },
+      {
+        "type": "sha256",
+        "value": "4b227777d4dd1fc61c6f884f48641d02b4d121d3fd328cb08b5531fcacdabf8a",
+        "page_number": 1,
+        "notes": "Ransomware stage 1 binary hash"
+      },
+      {
+        "type": "domain",
+        "value": "login.microsoft-verify.org",
+        "page_number": 1,
+        "notes": "Defanged [dot] phishing domain"
+      }
+    ]
+  }
+]

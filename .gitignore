@@ -1,0 +1,110 @@
+# ==============================================================================
+# ThreatMap Lite — Root .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Environment & Secret Files (CRITICAL: Never commit credentials)
+# ------------------------------------------------------------------------------
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.p12
+*.pfx
+*.pkcs12
+*.crt
+*.cert
+
+# Preserve safe environment templates
+!.env.example
+!backend/.env.example
+
+# ------------------------------------------------------------------------------
+# 2. Python Virtual Environments
+# ------------------------------------------------------------------------------
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# ------------------------------------------------------------------------------
+# 3. Python Bytecode & Runtime Caches
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ------------------------------------------------------------------------------
+# 4. Frontend & Node Dependencies / Build Output
+# ------------------------------------------------------------------------------
+node_modules/
+frontend/dist/
+frontend/build/
+.npm
+.eslintcache
+.parcel-cache
+.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# 5. Uploaded Documents & Raw Threat Reports (Storage Boundaries)
+# ------------------------------------------------------------------------------
+backend/uploads/*
+!backend/uploads/.gitignore
+!backend/uploads/.gitkeep
+
+eval/raw_reports/*
+!eval/raw_reports/.gitignore
+!eval/raw_reports/.gitkeep
+
+# Ignore raw threat PDFs anywhere in the workspace, preserving any explicit test fixtures
+*.pdf
+!tests/**/*.pdf
+
+# ------------------------------------------------------------------------------
+# 6. Database Files & Local Storage
+# ------------------------------------------------------------------------------
+*.sqlite
+*.sqlite3
+*.db
+
+# ------------------------------------------------------------------------------
+# 7. Operating System & Editor Files
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.temp
+*.log
