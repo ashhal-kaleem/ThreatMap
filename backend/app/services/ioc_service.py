@@ -45,14 +45,73 @@ PRIVATE_NETWORKS = [
     ipaddress.ip_network("240.0.0.0/4"),  # Reserved / Broadcast (includes 255.255.255.255)
 ]
 
-# Common file extensions that look like domain TLDs to avoid false positives
+# Common file extensions and format suffixes that look like domain TLDs to avoid false positives
 FILE_EXTENSIONS = {
-    "pdf", "exe", "dll", "doc", "docx", "xls", "xlsx", "ppt", "pptx",
-    "zip", "rar", "7z", "tar", "gz", "ps1", "bat", "sh", "py", "c",
-    "cpp", "h", "json", "xml", "yaml", "yml", "csv", "tsv", "txt",
-    "png", "jpg", "jpeg", "gif", "svg", "bin", "iso", "cfg", "ini",
-    "log", "tmp", "bak", "sys", "vbs", "js", "html", "htm", "css",
+    # Documents & media
+    "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "csv", "tsv", "txt",
+    "png", "jpg", "jpeg", "gif", "svg", "bmp", "ico",
+    # Binaries, archives & drivers
+    "exe", "dll", "bin", "iso", "sys", "zip", "rar", "7z", "tar", "gz",
+    # Scripts, source code & web templates
+    "ps1", "bat", "cmd", "sh", "py", "c", "cpp", "h", "cs", "java", "class",
+    "js", "ts", "html", "htm", "css", "vbs", "vbe", "wsf", "hta", "jar", "war",
+    "php", "jsp", "jspx", "asp", "aspx", "axd", "ashx", "asmx", "pl", "pm",
+    "go", "rb", "rs", "wasm",
+    # Configuration, data & certificate formats
+    "json", "xml", "yaml", "yml", "cfg", "ini", "log", "tmp", "bak",
+    "properties", "conf", "config", "dist", "save", "sample", "backup",
+    "pem", "crt", "cer", "key", "pfx", "p12", "stix", "taxii", "hzn",
 }
+
+# Curated reference authorities, government CSIRTs, standard bodies, security research vendors,
+# and RFC documentation placeholders that should not be extracted as threat indicators.
+REFERENCE_DOMAINS = {
+    # US Government & Incident Response Authorities
+    "cisa.gov", "cisa.dhs.gov", "us-cert.gov", "fbi.gov", "nsa.gov",
+    "defense.gov", "justice.gov", "dni.gov", "energy.gov", "treasury.gov",
+    # International Cybersecurity Agencies
+    "cyber.gov.au", "cyber.gc.ca", "ncsc.gov.uk", "ncsc.govt.nz",
+    "cert.ssi.gouv.fr", "ssi.gouv.fr", "cyber.gouv.fr", "anssi.gouv.fr",
+    "cert.europa.eu", "enisa.europa.eu", "bsi.bund.de",
+    # Vulnerability, Standards, and IP Registries
+    "mitre.org", "cve.org", "nist.gov", "first.org", "iana.org",
+    "ietf.org", "rfc-editor.org", "w3.org", "oasis-open.org", "icann.org",
+    "arin.net", "ripe.net", "apnic.net", "lacnic.net", "afrinic.net",
+    # Major Security Vendors, Threat Portals, and Advisory References
+    "microsoft.com", "msrc.microsoft.com", "vmware.com", "citrix.com",
+    "atlassian.com", "fortinet.com", "paloaltonetworks.com", "mandiant.com",
+    "fireeye.com", "virustotal.com", "symantec.com", "trendmicro.com",
+    "crowdstrike.com", "sentinelone.com", "sophos.com", "kaspersky.com",
+    "ivanti.com", "qualys.com", "tenable.com", "rapid7.com", "leaseweb.com",
+    # Footnote News & Academic Citation Sources
+    "washingtonpost.com", "nytimes.com", "reuters.com", "bleepingcomputer.com",
+    "therecord.media", "bankinfosecurity.com", "krebsonsecurity.com",
+    "darkreading.com", "wikipedia.org", "rand.org", "project2049.net",
+    "uscc.gov", "paper.edu.cn", "lw23.com", "hbsh.org", "ecice06.com",
+    # RFC 2606 / Documentation Placeholders
+    "example.com", "example.net", "example.org", "insecure-org.com",
+}
+
+# Dual-use platform hosting services (domains should not be extracted as adversary domain IOCs,
+# but specific payload URLs on them may be extracted if pointing to adversary endpoints).
+PLATFORM_HOSTING_DOMAINS = {
+    "github.com", "pastebin.com", "gitlab.com", "bitbucket.org", "discord.com", "telegram.org",
+}
+
+# Detection prefix pattern for antivirus engine signatures
+AV_SIGNATURE_PREFIX = re.compile(
+    r"\b(?:Trojan|GrayWare|TR|Backdoor|HackTool|Ransomware|Ransom|Worm|Virus|Exploit|Rootkit|Dropper|Downloader|Infostealer|Spyware|Adware)[/.](?:[A-Za-z0-9_.-]+[/.])?$",
+    re.IGNORECASE
+)
+
+# Common code method, property, or API scope suffixes that look like domains
+CODE_METHOD_SUFFIXES = {
+    "deserialize", "getinstance", "getruntime", "getlocalhost", "getinputstream",
+    "parseint", "fileno", "trim", "length", "socket", "call", "value", "execute", "read",
+}
+
+# Document classification markings
+CLASSIFICATION_TLDS = {"clear", "unclass", "restricted", "secret", "confidential", "internal"}
 
 # Regex patterns
 CVE_PATTERN = re.compile(r"\bCVE[-_](?:199\d|20\d{2})[-_]\d{4,7}\b", re.IGNORECASE)
@@ -103,6 +162,73 @@ def normalize_defanged(text: str) -> str:
     return s
 
 
+def is_reference_domain(domain_str: str) -> bool:
+    """
+    Checks if a domain belongs to known reference authorities, standards bodies,
+    security vendors, documentation examples, or platform hosting providers.
+    """
+    d = domain_str.lower().strip(".")
+    if d in REFERENCE_DOMAINS or d in PLATFORM_HOSTING_DOMAINS:
+        return True
+    parts = d.split(".")
+    for i in range(1, len(parts) - 1):
+        parent = ".".join(parts[i:])
+        if parent in REFERENCE_DOMAINS or parent in PLATFORM_HOSTING_DOMAINS:
+            return True
+    return False
+
+
+def is_platform_hosting_domain(domain_str: str) -> bool:
+    """
+    Checks if a domain is a shared platform hosting provider (e.g. GitHub, Pastebin)
+    where raw payload URLs may exist while the apex domain itself is not an IOC.
+    """
+    d = domain_str.lower().strip(".")
+    if d in PLATFORM_HOSTING_DOMAINS:
+        return True
+    parts = d.split(".")
+    for i in range(1, len(parts) - 1):
+        parent = ".".join(parts[i:])
+        if parent in PLATFORM_HOSTING_DOMAINS:
+            return True
+    return False
+
+
+def is_reference_url(norm_url: str, host: str, raw_match: str = "", context: str = "", line: str = "") -> bool:
+    """
+    Determines if a URL is a benign reference, advisory, or documentation link.
+    Permits specific malware payload/staging URLs, download endpoints, or defanged
+    tool/payload URLs accompanied by IOC/threat context on platform hosting services.
+    """
+    if is_reference_domain(host):
+        if is_platform_hosting_domain(host):
+            lower_url = norm_url.lower()
+            if "/raw/" in lower_url or "/download" in lower_url or "/releases/download" in lower_url:
+                return False
+            path_part = norm_url.split("://", 1)[-1].split("?", 1)[0].split("#", 1)[0]
+            if any(path_part.lower().endswith(f".{ext}") for ext in ("php", "x86_64", "exe", "bin", "sh", "elf", "ps1", "txt", "jsp", "asp", "aspx")):
+                return False
+
+            # Explicit negative signals: documentation, guidance, tools, references on the current line or URL path
+            check_text = f"{line} {norm_url}" if line else f"{context} {norm_url}"
+            if re.search(r"\b(?:doc|docs|documentation|reference|references|guidance|mitigation|remediation|guide|manual|scanner|rule|benchmark|advisory|advisories)\b", check_text, re.IGNORECASE):
+                return True
+
+            # Retain platform URLs only when defanging is accompanied by relevant IOC/threat context
+            is_defanged = bool(raw_match and re.search(r"hxxp|\[\.\]|\(\.\)|\{\.\}|\[dot\]|\(dot\)|\[:\]", raw_match, re.IGNORECASE))
+            has_threat_context = bool(context and re.search(
+                r"\b(?:dropped|drops|malware|webshell|backdoor|payload|staged|c2|threat|ioc|iocs|indicator|indicators|exploit|attacker|adversary|observed|implant|trojan)\b",
+                context,
+                re.IGNORECASE,
+            ))
+            if is_defanged and has_threat_context:
+                return False
+
+            return True
+        return True
+    return False
+
+
 def is_private_ip(ip_str: str) -> bool:
     """
     Checks if an IPv4 address belongs to RFC 1918 private, loopback, link-local,
@@ -126,7 +252,8 @@ def is_private_ip(ip_str: str) -> bool:
 def is_valid_ipv4(ip_str: str) -> bool:
     """
     Validates that a string is a valid routable IPv4 address.
-    Rejects private, loopback, multicast, broadcast, and invalid octets.
+    Rejects private, loopback, multicast, broadcast, and invalid octets,
+    as well as /16 network and broadcast boundaries (ending in .0.0 or .255.255).
     """
     try:
         octets = ip_str.split(".")
@@ -139,18 +266,115 @@ def is_valid_ipv4(ip_str: str) -> bool:
             if len(octet) > 1 and octet.startswith("0"):
                 return False  # No leading zeros like 01.02.03.04
 
+        # Reject /16 network and broadcast boundaries which are not host addresses
+        if (octets[2] == "0" and octets[3] == "0") or (octets[2] == "255" and octets[3] == "255"):
+            return False
+
         return not is_private_ip(ip_str)
     except Exception:
         return False
+
+
+def is_version_or_ua_ip(match_span: tuple[int, int], line: str, prev_line: str = "") -> bool:
+    """
+    Detects if an IPv4 match is actually a software build version or browser User-Agent string.
+    """
+    start, end = match_span
+    prefix = line[:start]
+    suffix = line[end:]
+
+    # 1. User-Agent / product string (e.g. Chrome/116.0.0.0, Safari/537.36)
+    # Exclude unix network device paths like /dev/tcp/ and /dev/udp/
+    if re.search(r"(?:Chrome|Safari|Firefox|Edge|Edg|OPR|Opera|AppleWebKit|Gecko|Mozilla|Mobile|MSIE|Trident|Version)/[0-9.]*$", prefix, re.IGNORECASE):
+        return True
+    if re.search(r"[a-zA-Z]+/[0-9.]*$", prefix) and not re.search(r"/(?:dev|etc|tmp|var|usr|bin)/", prefix, re.IGNORECASE):
+        return True
+
+    # 2. Version prefix immediately before digits (e.g. v1.2.3.4, v. 1.2.3.4)
+    if re.search(r"(?:\b[vV]\.?\s*)$", prefix):
+        return True
+
+    # 3. Version / build keywords preceding candidate (handles lists like 'versions 21.08.0.1, 20.10.0.1')
+    ver_kw_match = re.search(r"\b(?:version|versions|ver\.|build|builds|release|rel\.|revision)\b((?:[^\n]{0,80}))$", prefix, re.IGNORECASE)
+    if ver_kw_match:
+        intervening = ver_kw_match.group(1)
+        # Sentence boundary terminates version context
+        if not re.search(r"[.!?]\s+", intervening):
+            # If intervening text contains network/host/prose words, it transitioned away from the version list
+            if not re.search(r"\b(?:server|host|node|ip|address|from|to|at|on|endpoint|connecting|compromised|c2|victim|actor|attacker|deployed|was)\b", intervening, re.IGNORECASE):
+                return True
+
+    if re.search(r"\b(?:before|after|prior\s+to|earlier\s+than)\s*$", prefix, re.IGNORECASE):
+        return True
+
+    # Check previous wrapped line in table / list context
+    if prev_line and prev_line.strip().lower().endswith(("before", "after", "build", "builds", "version", "versions", "release", "prior to", "earlier")):
+        return True
+
+    # 4. Version suffix immediately following candidate (e.g. 2.0.0.1 and earlier, 12.1.55.18; version 12.0)
+    if re.search(r"^\s*(?:and earlier|and later|or earlier|or later|and above|and below|or above|or below|;\s*version)\b", suffix, re.IGNORECASE):
+        return True
+
+    return False
+
+
+def is_av_signature(match_span: tuple[int, int], line: str) -> bool:
+    """
+    Detects if a domain match is part of an antivirus threat detection signature
+    (e.g., Trojan/Win64.Shelma, GrayWare/Win32.Rozena.j, TR/Crypt.XPACK.Gen7, Vir.IT eXplorer).
+    """
+    start, end = match_span
+    prefix = line[:start]
+    suffix = line[end:]
+    if AV_SIGNATURE_PREFIX.search(prefix):
+        return True
+    domain_cand = line[start:end].lower()
+    if any(domain_cand.startswith(p) for p in ("win32.", "win64.", "trojan.", "crypt.", "obfuscated.", "hacktool.")):
+        return True
+    if domain_cand == "vir.it" and suffix.strip().startswith("eXplorer"):
+        return True
+    return False
+
+
+def is_method_call(match_span: tuple[int, int], line: str) -> bool:
+    """
+    Detects if a domain match is followed by function or method invocation parentheses.
+    """
+    start, end = match_span
+    suffix = line[end:]
+    if re.search(r"^\s*\(", suffix):
+        return True
+    return False
+
+
+def normalize_cve(raw_cve: str) -> str:
+    """
+    Standardizes CVE format and resolves footnote corruption (e.g. CVE-2024-938038 -> CVE-2024-9380).
+    """
+    cve = raw_cve.upper().replace("_", "-")
+    parts = cve.split("-")
+    if len(parts) == 3:
+        prefix, year, seq = parts
+        # If sequence number has 6 or 7 digits and exceeds realistic annual allocations (> 60000)
+        if len(seq) >= 6 and int(seq) > 60000:
+            # Check if stripping last 2 digits yields a realistic CVE sequence
+            candidate_seq = seq[:-2]
+            if len(candidate_seq) >= 4 and int(candidate_seq) <= 60000:
+                return f"{prefix}-{year}-{candidate_seq}"
+            candidate_seq1 = seq[:-1]
+            if len(candidate_seq1) >= 4 and int(candidate_seq1) <= 60000:
+                return f"{prefix}-{year}-{candidate_seq1}"
+    return cve
 
 
 def is_valid_domain(domain_str: str) -> bool:
     """
     Validates that a candidate string is a plausible domain:
     - Must have at least one dot.
-    - TLD must be alphabetic, at least 2 characters, and not a common file extension.
-    - Must not be an IP address.
+    - TLD must be alphabetic, at least 2 characters, and not a common file extension or classification marking.
+    - Must not be an IP address or reference domain.
     - Labels must be alphanumeric with optional hyphens.
+    - Must not be a programming method, object property, or package name.
     """
     domain = domain_str.lower().strip(".")
     if "." not in domain or len(domain) > 253:
@@ -166,8 +390,24 @@ def is_valid_domain(domain_str: str) -> bool:
     labels = domain.split(".")
     tld = labels[-1]
 
-    # Validate TLD
-    if not tld.isalpha() or len(tld) < 2 or tld in FILE_EXTENSIONS:
+    # Validate TLD against file extensions, CVE prefix artifact, or classification markers
+    if not tld.isalpha() or len(tld) < 2 or tld in FILE_EXTENSIONS or tld == "cve":
+        return False
+
+    # Discard document classification markings
+    if tld in CLASSIFICATION_TLDS and any(domain.startswith(p) for p in ("mar-", "cisa-", "report-")):
+        return False
+
+    # Discard code method calls and property suffixes
+    if tld in CODE_METHOD_SUFFIXES and len(labels) >= 2:
+        return False
+
+    # Discard common code packages
+    if any(domain.startswith(pkg) for pkg in ("javax.", "java.", "org.apache.", "com.sun.")):
+        return False
+
+    # Discard reference authorities & documentation placeholders
+    if is_reference_domain(domain):
         return False
 
     # Validate each label
@@ -253,16 +493,18 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
             continue
 
         lines = raw_text.splitlines()
+        prev_line = ""
 
-        for line in lines:
+        for idx, line in enumerate(lines):
             if not line.strip():
                 continue
 
             normalized_line = normalize_defanged(line)
 
-            # 1. Extract CVEs
+            # 1. Extract CVEs (normalizing footnote concatenation)
             for match in CVE_PATTERN.finditer(normalized_line):
-                cve_val = match.group(0).upper().replace("_", "-")
+                raw_cve = match.group(0)
+                cve_val = normalize_cve(raw_cve)
                 key = ("cve", cve_val)
                 if key not in seen_iocs:
                     seen_iocs.add(key)
@@ -270,7 +512,7 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
                         "type": "cve",
                         "value": cve_val,
                         "source_page": page_num,
-                        "evidence": extract_evidence_snippet(line, match.group(0)),
+                        "evidence": extract_evidence_snippet(line, raw_cve),
                     })
 
             # 2. Extract SHA256 hashes (64 hex characters)
@@ -322,25 +564,56 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
             line_urls_for_masking = []
             for match in URL_RAW_PATTERN.finditer(line):
                 raw_match = match.group(0)
+                combined_evidence = line
+
+                # Handle line-wrapped platform URLs where path continues on the next line
+                temp_norm = clean_url(normalize_defanged(raw_match))
+                hm = re.search(r"https?://([^/:\s]+)", temp_norm, re.IGNORECASE)
+                if hm and is_platform_hosting_domain(hm.group(1)):
+                    # Only reconstruct if the URL strictly terminates the line with a trailing slash
+                    if raw_match.endswith("/") and line.rstrip().endswith(raw_match) and idx + 1 < len(lines):
+                        next_l = lines[idx + 1].strip()
+                        if next_l and not re.match(r"^(?:https?|hxxps?|ftp)://", next_l, re.IGNORECASE):
+                            next_tokens = next_l.split()
+                            next_part = next_tokens[0].rstrip(".,;:)'\"]}>")
+                            # Valid path continuation must contain a subpath '/' or known file extension
+                            is_valid_path = (
+                                re.match(r"^[a-zA-Z0-9_\-\./~%]+$", next_part)
+                                and ("/" in next_part or any(next_part.lower().endswith(f".{ext}") for ext in ("zip", "tar.gz", "tgz", "bin", "exe", "sh", "py", "php", "txt", "pdf")))
+                                and not next_part.lower().startswith(("http", "page", "tlp", "figure", "table", "section", "update"))
+                            )
+                            # Reject if the next line appears to be an ordinary prose sentence starting with capitalized words
+                            if len(next_tokens) > 1 and re.match(r"^[A-Z][a-z]+(?:\s+[a-z]+)+", next_l):
+                                is_valid_path = False
+
+                            if is_valid_path:
+                                raw_match = raw_match + next_part
+                                combined_evidence = f"{line.strip()} {next_l}"
+
                 norm_url = clean_url(normalize_defanged(raw_match))
                 # Validate host component
                 host_match = re.search(r"https?://([^/:\s]+)", norm_url, re.IGNORECASE)
                 if host_match:
                     host = host_match.group(1).lower()
-                    if is_valid_ipv4(host) or is_valid_domain(host):
-                        key = ("url", norm_url)
-                        line_urls_for_masking.append(raw_match)
+                    if is_valid_ipv4(host) or is_valid_domain(host) or is_reference_domain(host):
+                        line_urls_for_masking.append(match.group(0))
                         line_urls_for_masking.append(norm_url)
+                        # Exclude benign reference/advisory URLs (checking up to 3 lines of preceding context)
+                        context_lines = [l.strip() for l in lines[max(0, idx - 3):idx + 1] if l.strip()]
+                        context = " ".join(context_lines)
+                        if is_reference_url(norm_url, host, raw_match, context, line):
+                            continue
+                        key = ("url", norm_url)
                         if key not in seen_iocs:
                             seen_iocs.add(key)
                             extracted_iocs.append({
                                 "type": "url",
                                 "value": norm_url,
                                 "source_page": page_num,
-                                "evidence": extract_evidence_snippet(line, raw_match),
+                                "evidence": extract_evidence_snippet(combined_evidence, raw_match),
                             })
-                        # Also register host as a domain IOC if it's a domain
-                        if is_valid_domain(host):
+                        # Also register host as a domain IOC if it's a domain and not a hosting platform or reference domain
+                        if is_valid_domain(host) and not is_platform_hosting_domain(host):
                             d_key = ("domain", host)
                             if d_key not in seen_iocs:
                                 seen_iocs.add(d_key)
@@ -348,13 +621,13 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
                                     "type": "domain",
                                     "value": host,
                                     "source_page": page_num,
-                                    "evidence": extract_evidence_snippet(line, raw_match),
+                                    "evidence": extract_evidence_snippet(combined_evidence, raw_match),
                                 })
 
-            # 6. Extract IPv4 addresses
+            # 6. Extract IPv4 addresses (excluding version numbers and User-Agent strings)
             for match in IPV4_PATTERN.finditer(normalized_line):
                 ip_val = match.group(0)
-                if is_valid_ipv4(ip_val):
+                if is_valid_ipv4(ip_val) and not is_version_or_ua_ip(match.span(), normalized_line, prev_line):
                     key = ("ipv4", ip_val)
                     if key not in seen_iocs:
                         seen_iocs.add(key)
@@ -374,7 +647,11 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
             for match in DOMAIN_PATTERN.finditer(domain_search_line):
                 raw_domain = match.group(0)
                 norm_domain = normalize_defanged(raw_domain).lower().strip(".")
-                if is_valid_domain(norm_domain):
+                if (
+                    is_valid_domain(norm_domain)
+                    and not is_av_signature(match.span(), domain_search_line)
+                    and not is_method_call(match.span(), domain_search_line)
+                ):
                     key = ("domain", norm_domain)
                     if key not in seen_iocs:
                         seen_iocs.add(key)
@@ -384,5 +661,7 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
                             "source_page": page_num,
                             "evidence": extract_evidence_snippet(line, raw_domain),
                         })
+
+            prev_line = line
 
     return extracted_iocs
