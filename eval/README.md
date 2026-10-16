@@ -168,41 +168,119 @@ Follow this structured workflow to establish an empirical evaluation benchmark:
 
 ---
 
-## 4. How to Run the Evaluator & Annotation Workflow
+## 4. Ground-Truth Annotation & Precision/Recall Evaluation Workflow
 
-Run all commands from the repository root (`P:\ThreatMap`):
+To measure true precision and recall without fabricating labels or biasing the dataset towards the current extractor, ThreatMap Lite implements a human-auditable annotation workflow.
 
-### Step A: Preparing Real Threat Reports for Annotation
-When sample PDF reports are gathered (target: 15–20 reports):
+### Overview of Workflow Components
+
+1. **`eval.generate_review_queue`**: Combines independent, permissive candidate discovery with production extractor predictions to produce a candidate CSV review queue.
+2. **`eval.review_to_dataset`**: Audits reviewed CSV annotations, ensures label validity, and exports verified `true_ioc` records into standard dataset JSON format.
+3. **`eval.evaluate_annotations`**: Evaluates production extractor predictions against the human-audited review queue, computing Micro/Macro Precision, Recall, and F1 with zero-denominator safety.
+
+---
+
+### CSV Review Queue Schema (`eval/review_queue.csv`)
+
+| Column | Description | Valid Values |
+| :--- | :--- | :--- |
+| `report_filename` | PDF report file in `eval/raw_reports/` | e.g. `cisa_aa24_016a_androxgh0st_iocs.pdf` |
+| `source_page` | 1-based page number where the candidate appears | Integer $\ge 1$ |
+| `ioc_type` | Supported IOC category | `ipv4`, `domain`, `url`, `md5`, `sha1`, `sha256`, `cve` |
+| `raw_candidate` | Exact text matched from the PDF page | String |
+| `normalized_value` | Standardized form used for matching | Lowercase hash, standardized IP/domain/CVE |
+| `source_origin` | Provenance of the candidate | `both`, `permissive_discovery`, `production_extractor`, `manual_inspection` |
+| `label` | Human analyst verification status | `unreviewed` (default), `true_ioc`, `not_ioc`, `uncertain` |
+| `context_snippet` | Surrounding sentence or page context | Text snippet |
+| `reviewer_notes` | Analyst justification for label | Analyst comment (e.g. "Adversary webshell") |
+
+---
+
+### Step-by-Step Evaluation Procedure
+
+#### Step 1: Generate Candidate Review Queue
+Generate a review queue for the representative 3-report evaluation subset (covering all 7 IOC categories across 30 total pages):
 ```powershell
-# 1. Convert a directory of real PDF threat reports into an unpopulated annotation skeleton:
-python -m eval.prepare_annotation_skeleton --pdf-dir path/to/reports/ --output eval/real_reports_ground_truth.json
+# Generate review queue for representative 3-report subset:
+python -m eval.generate_review_queue --subset --output eval/review_queue_subset.csv
 
-# 2. Or convert a single PDF:
-python -m eval.prepare_annotation_skeleton --pdf path/to/report.pdf --report-id CISA-AA23-347A --output eval/real_reports_ground_truth.json
+# Or generate for all 20 accepted reports:
+python -m eval.generate_review_queue --all --output eval/review_queue_all.csv
+```
+*Strict Rule: All emitted candidates start with `label='unreviewed'`. No positive or negative labels are auto-populated.*
 
-# 3. Open eval/real_reports_ground_truth.json and manually populate the 'ground_truth' array.
+#### Step 2: Human Manual Review
+Open `eval/review_queue_subset.csv` in a spreadsheet or editor. For each candidate:
+1. Inspect the context snippet and the original PDF page.
+2. If confirmed as an adversary threat indicator, change `label` to **`true_ioc`** and add a note.
+3. If confirmed as benign prose, documentation, software version, or tool reference, change `label` to **`not_ioc`**.
+4. If ambiguous, set `label` to **`uncertain`** (uncertain items are tracked but excluded from ground truth).
+5. If you discover an indicator in the PDF that neither automated method found, append a new row with `source_origin='manual_inspection'`.
 
-# 4. Validate the completed annotations before running evaluation:
-python -m eval.prepare_annotation_skeleton --validate eval/real_reports_ground_truth.json
+#### Step 3: Audit Review Progress & Automated Queue Integrity
+Audit review progress, verify label health, distinguish annotation rows from unique indicators, and run automated checks for malformed values, duplicate candidates, missing evidence, invalid page numbers, or unlocated text:
+```powershell
+# Audit manual review working file (strict human review tracking):
+python -m eval.review_to_dataset --input eval/manual_review.csv --check-integrity
+
+# Audit original review queue subset:
+python -m eval.review_to_dataset --input eval/review_queue_subset.csv --check-integrity
 ```
 
-### Step B: Running Evaluation
+> [!NOTE]
+> **Definition of 119 Document-Level Unique Indicators:**  
+> The queue contains **139 total annotation rows**, representing **119 document-level unique indicators** deduplicated by `(report_filename, ioc_type, normalized_value)`. Repeated occurrences or multi-page citations of the same indicator within the same document account for the difference between 139 rows and 119 unique indicators (59 true IOCs, 57 negative controls, 3 uncertain candidates).
+
+#### Step 4: Manual Human Review & Evidence Verification Safeguards
+Human analysts record decisions in `eval/manual_review.csv` while preserving `eval/review_queue_subset.csv` byte-for-byte.
+Review fields:
+- `human_label`: `true_ioc`, `not_ioc`, `uncertain`, or `unreviewed`.
+- `human_evidence`: Exact verbatim snippet from source PDF page verifying source provenance.
+- `human_notes`: Justification explaining why this indicator is malicious, benign, or ambiguous.
+- `reviewed_by`: Analyst identifier/signature.
+
+**Rigorous Safeguards:**
+1. A verbatim PDF quote verifies source provenance only. Human justification (`human_notes`) is required for verified labels.
+2. Never silently convert an unsupported decision to another label; validation errors are raised and reported.
+3. Candidate-level evaluation is separated from full-report extraction:
+   - **Candidate-Level Evaluation (Closed-World Benchmark)**: Evaluates extraction against the reviewed candidate pool. The report table presents:
+     `Category`, `Support`, `Doc Extracted`, `TP`, `Conf FP`, `Uncertain`, `FN`, `Precision`, `Recall`, `F1`, and `Status`.
+   - **Extraction Accounting**:
+     $$\text{Doc Extracted} = \text{TP} + \text{Confirmed FP} + \text{Uncertain}$$
+     Extracted predictions may not equal $TP + \text{Confirmed FP}$ because neutral uncertain predictions are also extracted by the engine. For example, in the URL category:
+     $\text{Doc Extracted} = 13$, $\text{TP} = 11$, $\text{Confirmed FP} = 0$, $\text{Uncertain} = 2$, $\text{FN} = 0$.
+   - **Uncertain GitHub URLs (Neutral Reserve)**:
+     The two uncertain predictions are dual-use GitHub repositories from page 8 of the Androxgh0st advisory:
+     - `https://github.com/alexantr/filemanager`
+     - `https://github.com/prasathmani/tinyfilemanager`
+     These items are held in a neutral reserve and explicitly excluded from Confirmed FP counts in both candidate-level and open-world reporting.
+   - **Candidate Recall vs. Complete Document Recall**:
+     Candidate-level recall ($1.0000$) applies **strictly to the currently reviewed positive candidate pool**. It proves the extractor missed 0 of the 59 reviewed true IOC candidates ($FN = 0$). It does **not** represent complete, open-world document-level recall, as unannotated sections of the PDF reports may contain additional indicators not captured in the candidate review queue.
+   - **Negative-Control Metric**: Confirmed negative (`not_ioc`) suppression is calculated as:
+     $$\text{Negative-Control Rejection Rate} = \frac{\text{Confirmed Negatives Rejected}}{\text{Total Confirmed Negatives Tested}}$$
+     *(Strictly a negative-control metric, NOT general specificity).*
+   - **Open-World Accounting**: Predictions outside the reviewed candidate scope are reported as unreviewed/unresolved; they are NOT counted as confirmed false positives without complete annotation coverage.
+
+#### Step 5: Run Evaluation
+Compare production extractor predictions against reviewed annotations:
 ```powershell
-# 1. Evaluate Synthetic Test Suite (unit/CI benchmark):
-python -m eval.ioc_eval --dataset eval/test_data/synthetic_test_reports.json
+# 1. Evaluate human-reviewed queue (strictly reports 0 verified true IOCs if all remain unreviewed):
+python -m eval.evaluate_annotations --review-queue eval/manual_review.csv
 
-# 2. Detailed False Positive / False Negative Inspection:
-python -m eval.ioc_eval --dataset eval/test_data/synthetic_test_reports.json --verbose
+# 2. View AI-suggested baseline evaluation:
+python -m eval.evaluate_annotations --review-queue eval/manual_review.csv --baseline-suggestion
 
-# 3. Evaluate Real Threat Report Dataset and Export JSON:
-python -m eval.ioc_eval --dataset eval/real_reports_ground_truth.json --output eval/results.json
+# 3. Secondary Page-Aware Matching:
+python -m eval.evaluate_annotations --review-queue eval/manual_review.csv --page-aware
 
-# 4. Page-Aware Evaluation:
-python -m eval.ioc_eval --dataset eval/test_data/synthetic_test_reports.json --page-aware
+# 4. Export detailed evaluation JSON report:
+python -m eval.evaluate_annotations --review-queue eval/manual_review.csv --output eval/eval_results.json
+```
 
-# 5. Run All Pytest Tests (Unit + Service + Evaluator):
-pytest -v
+#### Step 6: Convert Verified Annotations to Standard Dataset JSON
+Export verified positive annotations, confirmed negatives, and uncertain candidates into `eval/dataset_schema.json` format:
+```powershell
+python -m eval.review_to_dataset --input eval/manual_review.csv --output eval/verified_subset_dataset.json
 ```
 
 ---

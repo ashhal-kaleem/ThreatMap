@@ -108,3 +108,13 @@ desktop.ini
 *.tmp
 *.temp
 *.log
+
+# ------------------------------------------------------------------------------
+# 8. Evaluation Tooling Output & Scratch Artifacts
+# ------------------------------------------------------------------------------
+# Generated evaluation output
+eval/eval_results.json
+
+# Local intermediate audit worksheets
+eval/*_worksheet.md
+eval/evidence_review_sheet.md

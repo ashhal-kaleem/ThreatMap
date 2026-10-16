@@ -1,0 +1,5 @@
+report_filename,source_page,ioc_type,raw_candidate,normalized_value,source_origin,label,context_snippet,reviewer_notes
+example_report.pdf,1,cve,CVE-2023-38831,CVE-2023-38831,both,true_ioc,"Exploited CVE-2023-38831 in WinRAR to execute code","Confirmed weaponized vulnerability used in intrusion"
+example_report.pdf,1,domain,cisa.gov,cisa.gov,permissive_discovery,not_ioc,"For advisory updates, visit https://www.cisa.gov","Benign advisory publisher reference, not an adversary indicator"
+example_report.pdf,2,ipv4,198.51.100.24,198.51.100.24,production_extractor,true_ioc,"Initial beacon connected to 198.51.100[.]24 on port 443","Attacker C2 infrastructure"
+example_report.pdf,2,domain,internal-corp-test.local,internal-corp-test.local,both,uncertain,"Observed in log: internal-corp-test.local","Ambiguous internal hostname; needs sandbox pcap verification"

@@ -7,6 +7,7 @@ from backend.app.services.ioc_service import (
     PageText,
     clean_url,
     extract_iocs,
+    is_email_local_part,
     is_private_ip,
     is_valid_domain,
     is_valid_ipv4,
@@ -481,3 +482,116 @@ def test_regression_platform_hosting_urls_and_ioc_drops():
 
     # Unrelated reference domain filters remain intact
     assert not any("cisa.gov" in u for u in urls)
+
+
+def test_regression_surge_sh_platform_url_and_shell_script_distinction():
+    """
+    Ensures platform-hosted .sh URLs (e.g. Surge-hosted config drops) are retained as URLs,
+    while standalone shell script filenames (deploy.sh) are not falsely extracted as domains.
+    """
+    pages = [
+        {
+            "page_number": 8,
+            "page_text": (
+                "Example malware drops through eval-stdin.php:\n"
+                "hxxp://tangible-drink.surge[.]sh/configx.txt\n"
+                "Execution relied on running deploy.sh and setup.sh on the target system.\n"
+                "The adversary also staged payloads on c2-active.net."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    urls = [i["value"] for i in iocs if i["type"] == "url"]
+    domains = [i["value"] for i in iocs if i["type"] == "domain"]
+
+    # Surge.sh URL must be successfully extracted
+    assert "http://tangible-drink.surge.sh/configx.txt" in urls
+
+    # Shell scripts must NOT be extracted as domain IOCs
+    assert "deploy.sh" not in domains
+    assert "setup.sh" not in domains
+
+    # Platform host itself must not be registered as an adversary domain IOC
+    assert "tangible-drink.surge.sh" not in domains
+    assert "surge.sh" not in domains
+
+    # Genuine threat domain must be extracted
+    assert "c2-active.net" in domains
+
+
+def test_regression_domain_false_positives_recon_and_extensions():
+    """
+    Ensures reconnaissance target files, internal suffixes, and reference authorities
+    are not falsely extracted as domain indicators:
+    - stopransomware.gov (reference authority)
+    - maui.evd (file extension)
+    - env.production, env.development, env.old (recon target configs)
+    - eval-stdin.php.dev (URI target script)
+    - raw.githubusercontent.com (platform hosting domain)
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Report published by StopRansomware: see stopransomware.gov for details.\n"
+                "Artifacts recovered: maui.exe, maui.log, maui.evd, and maui.key.\n"
+                "Target scan URIs: /.env.production, /.env.development.local, /.env.old, /.env.project.\n"
+                "Web shell probes to /vendor/phpunit/phpunit/src/Util/PHP/eval-stdin.php.dev.\n"
+                "Adversary staged code on raw.githubusercontent.com.\n"
+                "Legitimate C2 communication observed to malicious-command.net."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    domains = [i["value"] for i in iocs if i["type"] == "domain"]
+
+    # Authorities and platform domains must not be domain IOCs
+    assert "stopransomware.gov" not in domains
+    assert "raw.githubusercontent.com" not in domains
+
+    # File extensions and recon configs must not be domain IOCs
+    assert "maui.evd" not in domains
+    assert "env.production" not in domains
+    assert "env.development.local" not in domains
+    assert "env.old" not in domains
+    assert "env.project" not in domains
+    assert "eval-stdin.php.dev" not in domains
+
+    # Genuine domain must be extracted
+    assert "malicious-command.net" in domains
+
+
+def test_email_local_part_suppression():
+    """
+    Ensures dot-delimited email usernames ending in valid gTLDs (e.g. .reveal, .download, .pro)
+    are not falsely extracted as network domains:
+    - personal.information.reveal@gmail.com -> personal.information.reveal is suppressed
+    - confedicial.datas.download@protonmail.com -> confedicial.datas.download is suppressed
+    - defanged attacker.recon.download[at]protonmail.com -> attacker.recon.download is suppressed
+    - Standalone legitimate domains with the same TLD (e.g. malware-payload.download) remain extracted
+    - Email host domain (e.g. protonmail.com, company.org) extraction is not broken
+    """
+    pages = [
+        {
+            "page_number": 1,
+            "page_text": (
+                "Phishing contacts: personal.information.reveal@gmail.com; "
+                "confedicial.datas.download@protonmail.com; "
+                "and defanged analyst.test.reveal[at]security-corp.com.\n"
+                "Attacker exfiltration server was hosted at malware-payload.download.\n"
+                "Secondary C2 infrastructure: active-threat.pro."
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    domains = [i["value"] for i in iocs if i["type"] == "domain"]
+
+    # Email local-parts must NOT be extracted as domains
+    assert "personal.information.reveal" not in domains
+    assert "confedicial.datas.download" not in domains
+    assert "analyst.test.reveal" not in domains
+
+    # Legitimate domains with modern TLDs must still be extracted
+    assert "malware-payload.download" in domains
+    assert "active-threat.pro" in domains
+    assert "security-corp.com" in domains

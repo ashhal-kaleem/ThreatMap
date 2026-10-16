@@ -61,6 +61,8 @@ FILE_EXTENSIONS = {
     "json", "xml", "yaml", "yml", "cfg", "ini", "log", "tmp", "bak",
     "properties", "conf", "config", "dist", "save", "sample", "backup",
     "pem", "crt", "cer", "key", "pfx", "p12", "stix", "taxii", "hzn",
+    # Reconnaissance target configs & proprietary event logs
+    "evd", "production", "development", "project", "old", "prod", "local",
 }
 
 # Curated reference authorities, government CSIRTs, standard bodies, security research vendors,
@@ -69,6 +71,7 @@ REFERENCE_DOMAINS = {
     # US Government & Incident Response Authorities
     "cisa.gov", "cisa.dhs.gov", "us-cert.gov", "fbi.gov", "nsa.gov",
     "defense.gov", "justice.gov", "dni.gov", "energy.gov", "treasury.gov",
+    "stopransomware.gov",
     # International Cybersecurity Agencies
     "cyber.gov.au", "cyber.gc.ca", "ncsc.gov.uk", "ncsc.govt.nz",
     "cert.ssi.gouv.fr", "ssi.gouv.fr", "cyber.gouv.fr", "anssi.gouv.fr",
@@ -95,7 +98,8 @@ REFERENCE_DOMAINS = {
 # Dual-use platform hosting services (domains should not be extracted as adversary domain IOCs,
 # but specific payload URLs on them may be extracted if pointing to adversary endpoints).
 PLATFORM_HOSTING_DOMAINS = {
-    "github.com", "pastebin.com", "gitlab.com", "bitbucket.org", "discord.com", "telegram.org",
+    "github.com", "raw.githubusercontent.com", "pastebin.com", "gitlab.com",
+    "bitbucket.org", "discord.com", "telegram.org", "surge.sh",
 }
 
 # Detection prefix pattern for antivirus engine signatures
@@ -347,6 +351,23 @@ def is_method_call(match_span: tuple[int, int], line: str) -> bool:
     return False
 
 
+def is_email_local_part(match_span: tuple[int, int], line: str) -> bool:
+    """
+    Detects if a candidate domain match is actually the local-part (username)
+    of an email address preceding an '@' symbol (e.g. personal.information.reveal@gmail.com
+    or defanged user.name[at]protonmail.com).
+
+    Ensures that dot-delimited email usernames ending in strings that coincide with valid
+    gTLDs (e.g. .reveal, .download, .pro, .info) are not falsely extracted as network domains.
+    """
+    start, end = match_span
+    suffix = line[end:]
+    # Check if candidate is immediately followed by standard or defanged '@' delimiter
+    if re.match(r"^\s*(?:@|\[at\]|\(at\)|\[@\]|\(@\))", suffix, re.IGNORECASE):
+        return True
+    return False
+
+
 def normalize_cve(raw_cve: str) -> str:
     """
     Standardizes CVE format and resolves footnote corruption (e.g. CVE-2024-938038 -> CVE-2024-9380).
@@ -392,6 +413,10 @@ def is_valid_domain(domain_str: str) -> bool:
 
     # Validate TLD against file extensions, CVE prefix artifact, or classification markers
     if not tld.isalpha() or len(tld) < 2 or tld in FILE_EXTENSIONS or tld == "cve":
+        return False
+
+    # Discard script or binary file extensions occurring in middle labels (e.g. eval-stdin.php.dev)
+    if any(l in ("php", "asp", "aspx", "jsp", "jspx", "cgi", "exe", "dll") for l in labels[:-1]):
         return False
 
     # Discard document classification markings
@@ -651,6 +676,7 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
                     is_valid_domain(norm_domain)
                     and not is_av_signature(match.span(), domain_search_line)
                     and not is_method_call(match.span(), domain_search_line)
+                    and not is_email_local_part(match.span(), domain_search_line)
                 ):
                     key = ("domain", norm_domain)
                     if key not in seen_iocs:

@@ -70,6 +70,11 @@ class ReportEvaluation:
     false_positives: list[dict[str, Any]] = field(default_factory=list)
     false_negatives: list[dict[str, Any]] = field(default_factory=list)
     true_positives: list[dict[str, Any]] = field(default_factory=list)
+    confirmed_negatives_count: int = 0
+    negatives_rejected_count: int = 0
+    negative_control_rejection_rate: float | None = None
+    unreviewed_predictions: list[dict[str, Any]] = field(default_factory=list)
+    uncertain_predictions: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -78,10 +83,12 @@ class OverallEvaluationSummary:
     num_reports: int
     is_synthetic_dataset: bool
     page_aware: bool
+    is_unverified_dataset: bool = False
     per_category: dict[str, CategoryMetrics] = field(default_factory=dict)
     micro_avg: dict[str, float | None] = field(default_factory=dict)
     macro_avg: dict[str, Any] = field(default_factory=dict)
     reports: list[ReportEvaluation] = field(default_factory=list)
+    negative_control_summary: dict[str, Any] = field(default_factory=dict)
 
 
 def normalize_ground_truth_value(ioc_type: str, raw_value: str) -> str:
@@ -305,9 +312,38 @@ def evaluate_report(
                 "evidence": item.get("evidence", ""),
             }
 
+    # Process confirmed negatives and uncertain candidates if provided in dataset
+    has_explicit_negatives = "confirmed_negatives" in record
+
+    neg_set: set[tuple[Any, ...]] = set()
+    for neg in record.get("confirmed_negatives", []):
+        t = neg["type"]
+        v = normalize_ground_truth_value(t, neg["value"])
+        p = int(neg.get("page_number", 0))
+        neg_set.add((t, v, p) if page_aware else (t, v))
+
+    unc_set: set[tuple[Any, ...]] = set()
+    for unc in record.get("uncertain_candidates", []):
+        t = unc["type"]
+        v = normalize_ground_truth_value(t, unc["value"])
+        p = int(unc.get("page_number", 0))
+        unc_set.add((t, v, p) if page_aware else (t, v))
+
     tp_keys = gt_set.intersection(pred_set)
-    fp_keys = pred_set.difference(gt_set)
     fn_keys = gt_set.difference(pred_set)
+
+    if has_explicit_negatives:
+        # Candidate-level: only verified negatives count as confirmed false positives
+        fp_keys = pred_set.intersection(neg_set)
+        unc_pred_keys = pred_set.intersection(unc_set)
+        unrev_pred_keys = pred_set.difference(gt_set.union(neg_set).union(unc_set))
+        neg_rej_keys = neg_set.difference(pred_set)
+    else:
+        # Default fallback for synthetic benchmark fixtures
+        fp_keys = pred_set.difference(gt_set)
+        unc_pred_keys = set()
+        unrev_pred_keys = set()
+        neg_rej_keys = set()
 
     # Build per-category counts
     category_counts: dict[str, dict[str, int]] = {
@@ -371,6 +407,28 @@ def evaluate_report(
         for k in sorted(fn_keys)
     ]
 
+    unrev_preds = [
+        {
+            "type": k[0],
+            "value": k[1],
+            "page": k[2] if page_aware else pred_lookup[k]["source_page"],
+            "evidence": pred_lookup[k].get("evidence", ""),
+        }
+        for k in sorted(unrev_pred_keys)
+    ]
+
+    unc_preds = [
+        {
+            "type": k[0],
+            "value": k[1],
+            "page": k[2] if page_aware else pred_lookup[k]["source_page"],
+            "evidence": pred_lookup[k].get("evidence", ""),
+        }
+        for k in sorted(unc_pred_keys)
+    ]
+
+    neg_rate = round(len(neg_rej_keys) / len(neg_set), 4) if neg_set else None
+
     return ReportEvaluation(
         report_id=report_id,
         synthetic=is_synthetic,
@@ -384,6 +442,11 @@ def evaluate_report(
         false_positives=fps,
         false_negatives=fns,
         true_positives=tps,
+        confirmed_negatives_count=len(neg_set),
+        negatives_rejected_count=len(neg_rej_keys),
+        negative_control_rejection_rate=neg_rate,
+        unreviewed_predictions=unrev_preds,
+        uncertain_predictions=unc_preds,
     )
 
 
@@ -405,6 +468,11 @@ def evaluate_dataset(
     }
 
     is_any_synthetic = any(r.synthetic for r in reports_eval)
+    is_any_unverified = any(
+        r.get("verification_status") == "ai_suggested_unverified"
+        or "UNVERIFIED AI-SUGGESTED" in str(r.get("notes", ""))
+        for r in dataset
+    )
 
     for rep in reports_eval:
         for cat in SUPPORTED_IOC_TYPES:
@@ -491,15 +559,32 @@ def evaluate_dataset(
         "total_categories": len(SUPPORTED_IOC_TYPES),
     }
 
+    # Aggregate negative control metrics
+    total_confirmed_negatives = sum(r.confirmed_negatives_count for r in reports_eval)
+    total_negatives_rejected = sum(r.negatives_rejected_count for r in reports_eval)
+    overall_rej_rate = round(total_negatives_rejected / total_confirmed_negatives, 4) if total_confirmed_negatives > 0 else None
+    neg_control_summary = {
+        "total_confirmed_negatives": total_confirmed_negatives,
+        "negatives_rejected": total_negatives_rejected,
+        "confirmed_false_positives": sum(len(r.false_positives) for r in reports_eval if r.confirmed_negatives_count > 0),
+        "negative_control_rejection_rate": overall_rej_rate,
+        "metric_semantics": (
+            "Treat confirmed-negative rejection as a negative-control metric, NOT general specificity. "
+            "Calculates proportion of known benign candidates correctly rejected/suppressed by extractor."
+        ),
+    }
+
     return OverallEvaluationSummary(
         dataset_path=str(dataset_path),
         num_reports=len(reports_eval),
         is_synthetic_dataset=is_any_synthetic,
         page_aware=page_aware,
+        is_unverified_dataset=is_any_unverified,
         per_category=per_category,
         micro_avg=micro_avg,
         macro_avg=macro_avg,
         reports=reports_eval,
+        negative_control_summary=neg_control_summary,
     )
 
 
@@ -519,6 +604,9 @@ def format_terminal_report(summary: OverallEvaluationSummary, verbose: bool = Fa
     if summary.is_synthetic_dataset:
         lines.append(" DATASET NATURE  : [!] SYNTHETIC TEST FIXTURE (NOT REAL THREAT REPORTS)")
         lines.append("                   Metrics below represent unit/fixture testing, NOT production evaluation.")
+    elif summary.is_unverified_dataset:
+        lines.append(" DATASET NATURE  : [!] UNVERIFIED AI-SUGGESTED ANNOTATIONS (NOT HUMAN GROUND TRUTH)")
+        lines.append("                   Metrics below represent automated suggestion baseline, NOT final benchmark.")
     else:
         lines.append(" DATASET NATURE  : Real Ground-Truth Annotated Threat Reports")
 
@@ -575,6 +663,26 @@ def format_terminal_report(summary: OverallEvaluationSummary, verbose: bool = Fa
         f"({summary.macro_avg.get('categories_evaluated', 0)}/{summary.macro_avg.get('total_categories', 7)} types)"
     )
     lines.append("=" * 80)
+    lines.append(" NOTE: In candidate-level evaluation, Doc Extracted equals TP + Conf FP + Uncertain.")
+    lines.append("       Extracted predictions may not equal TP + Conf FP because neutral uncertain predictions")
+    lines.append("       (e.g., dual-use GitHub repositories) are extracted from document text but remain")
+    lines.append("       excluded from confirmed false positive counts in candidate-level and open-world reporting.")
+    lines.append("       Candidate recall (1.0000) applies strictly to the reviewed candidate pool, not complete document recall.")
+    lines.append("=" * 80)
+
+    # Negative Control Summary if present
+    neg_sum = summary.negative_control_summary
+    if neg_sum and neg_sum.get("total_confirmed_negatives", 0) > 0:
+        lines.append("\nNEGATIVE-CONTROL EVALUATION (BENIGN SUPPRESSION):")
+        lines.append(f" Total Confirmed Negatives Tested : {neg_sum['total_confirmed_negatives']}")
+        lines.append(f" Confirmed Negatives Rejected     : {neg_sum['negatives_rejected']}")
+        lines.append(f" Confirmed Negatives Extracted    : {neg_sum['confirmed_false_positives']} (Confirmed False Positives)")
+        rate = neg_sum.get("negative_control_rejection_rate")
+        rate_str = f"{rate * 100:.2f}%" if rate is not None else "N/A"
+        lines.append(f" Negative-Control Rejection Rate  : {rate_str}")
+        lines.append(" NOTE: Confirmed-negative rejection measures the extractor's ability to reject known negative")
+        lines.append("       controls. It is strictly a negative-control metric, NOT general specificity.")
+        lines.append("=" * 80)
 
     # Verbose error breakdown
     if verbose:
