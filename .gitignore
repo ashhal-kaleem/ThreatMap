@@ -118,3 +118,5 @@ eval/eval_results.json
 # Local intermediate audit worksheets
 eval/*_worksheet.md
 eval/evidence_review_sheet.md
+data/reports/
+data/enterprise-attack.json
