@@ -4,10 +4,7 @@ from typing import TypedDict
 import spacy
 
 
-class PageText(TypedDict):
-    page_number: int
-    page_text: str
-    text: str
+from backend.app.services.pdf_service import PageText
 
 
 class BehaviorSentence(TypedDict):

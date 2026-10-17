@@ -6,9 +6,9 @@ from pathlib import Path
 import pymupdf
 
 ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT))
 
-from app.services.behavior_service import iter_sentence_records
+from backend.app.services.behavior_service import iter_sentence_records
 
 SAMPLE_PER_REPORT = 20
 SEED = 42

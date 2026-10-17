@@ -4,8 +4,8 @@ from typing import Optional, TypedDict
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-from app.services.behavior_service import BehaviorSentence
-from attck.loader import load_techniques, technique_embedding_text
+from backend.app.services.behavior_service import BehaviorSentence
+from backend.attck.loader import load_techniques, technique_embedding_text
 
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_THRESHOLD = 0.45

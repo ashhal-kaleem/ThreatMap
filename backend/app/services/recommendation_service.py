@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Optional, TypedDict
 
-from attck.loader import load_mitigations, load_techniques
+from backend.attck.loader import load_mitigations, load_techniques
 
 
 class MitigationRecommendation(TypedDict):

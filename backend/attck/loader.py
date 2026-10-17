@@ -56,3 +56,29 @@ def load_mitigations() -> tuple[list[MitigationRecord], list[TechniqueMitigation
 
 def technique_embedding_text(technique: TechniqueRecord) -> str:
     return f"{technique['technique_name']}. {technique['description']}"
+
+def seed_attack_data(session) -> dict[str, int]:
+    from backend.app.models.db_models import (
+        AttackMitigation,
+        AttackTechnique,
+        TechniqueMitigation,
+    )
+
+    techniques = load_techniques()
+    mitigations, links = load_mitigations()
+
+    for technique in techniques:
+        session.merge(AttackTechnique(**technique))
+    for mitigation in mitigations:
+        session.merge(AttackMitigation(**mitigation))
+    session.flush()
+    for link in links:
+        session.merge(TechniqueMitigation(**link))
+    session.commit()
+
+    unique_links = {(link["technique_id"], link["mitigation_id"]) for link in links}
+    return {
+        "techniques": len(techniques),
+        "mitigations": len(mitigations),
+        "links": len(unique_links),
+    }
