@@ -1,0 +1,756 @@
+{
+  "mitigations": [
+    {
+      "mitigation_id": "M1013",
+      "name": "Application Developer Guidance",
+      "description": "Application Developer Guidance focuses on providing developers with the knowledge, tools, and best practices needed to write secure code, reduce vulnerabilities, and implement secure design principles. By integrating security throughout the software development lifecycle (SDLC), this mitigation aims to prevent the introduction of exploitable weaknesses in applications, systems, and APIs."
+    },
+    {
+      "mitigation_id": "M1015",
+      "name": "Active Directory Configuration",
+      "description": "Implement robust Active Directory (AD) configurations using group policies to secure user accounts, control access, and minimize the attack surface. AD configurations enable centralized control over account settings, logon policies, and permissions, reducing the risk of unauthorized access and lateral movement within the network."
+    },
+    {
+      "mitigation_id": "M1016",
+      "name": "Vulnerability Scanning",
+      "description": "Vulnerability scanning involves the automated or manual assessment of systems, applications, and networks to identify misconfigurations, unpatched software, or other security weaknesses. The process helps prioritize remediation efforts by classifying vulnerabilities based on risk and impact, reducing the likelihood of exploitation by adversaries."
+    },
+    {
+      "mitigation_id": "M1017",
+      "name": "User Training",
+      "description": "User Training involves educating employees and contractors on recognizing, reporting, and preventing cyber threats that rely on human interaction, such as phishing, social engineering, and other manipulative techniques. Comprehensive training programs create a human firewall by empowering users to be an active component of the organization's cybersecurity defenses."
+    },
+    {
+      "mitigation_id": "M1018",
+      "name": "User Account Management",
+      "description": "User Account Management involves implementing and enforcing policies for the lifecycle of user accounts, including creation, modification, and deactivation. Proper account management reduces the attack surface by limiting unauthorized access, managing account privileges, and ensuring accounts are used according to organizational policies."
+    },
+    {
+      "mitigation_id": "M1020",
+      "name": "SSL/TLS Inspection",
+      "description": "SSL/TLS inspection involves decrypting encrypted network traffic to examine its content for signs of malicious activity. This capability is crucial for detecting threats that use encryption to evade detection, such as phishing, malware, or data exfiltration. After inspection, the traffic is re-encrypted and forwarded to its destination."
+    },
+    {
+      "mitigation_id": "M1021",
+      "name": "Restrict Web-Based Content",
+      "description": "Restricting web-based content involves enforcing policies and technologies that limit access to potentially malicious websites, unsafe downloads, and unauthorized browser behaviors. This can include URL filtering, download restrictions, script blocking, and extension control to protect against exploitation, phishing, and malware delivery."
+    },
+    {
+      "mitigation_id": "M1022",
+      "name": "Restrict File and Directory Permissions",
+      "description": "Restricting file and directory permissions involves setting access controls at the file system level to limit which users, groups, or processes can read, write, or execute files. By configuring permissions appropriately, organizations can reduce the attack surface for adversaries seeking to access sensitive data, plant malicious code, or tamper with system files."
+    },
+    {
+      "mitigation_id": "M1025",
+      "name": "Privileged Process Integrity",
+      "description": "Privileged Process Integrity focuses on defending highly privileged processes (e.g., system services, antivirus, or authentication processes) from tampering, injection, or compromise by adversaries. These processes often interact with critical components, making them prime targets for techniques like code injection, privilege escalation, and process manipulation."
+    },
+    {
+      "mitigation_id": "M1026",
+      "name": "Privileged Account Management",
+      "description": "Privileged Account Management focuses on implementing policies, controls, and tools to securely manage privileged accounts (e.g., SYSTEM, root, or administrative accounts)."
+    },
+    {
+      "mitigation_id": "M1027",
+      "name": "Password Policies",
+      "description": "Set and enforce secure password policies for accounts to reduce the likelihood of unauthorized access. Strong password policies include enforcing password complexity, requiring regular password changes, and preventing password reuse."
+    },
+    {
+      "mitigation_id": "M1028",
+      "name": "Operating System Configuration",
+      "description": "Operating System Configuration involves adjusting system settings and hardening the default configurations of an operating system (OS) to mitigate adversary exploitation and prevent abuse of system functionality. Proper OS configurations address security vulnerabilities, limit attack surfaces, and ensure robust defense against a wide range of techniques."
+    },
+    {
+      "mitigation_id": "M1030",
+      "name": "Network Segmentation",
+      "description": "Network segmentation involves dividing a network into smaller, isolated segments to control and limit the flow of traffic between devices, systems, and applications. By segmenting networks, organizations can reduce the attack surface, restrict lateral movement by adversaries, and protect critical assets from compromise."
+    },
+    {
+      "mitigation_id": "M1031",
+      "name": "Network Intrusion Prevention",
+      "description": "Use intrusion detection signatures to block traffic at network boundaries."
+    },
+    {
+      "mitigation_id": "M1032",
+      "name": "Multi-factor Authentication",
+      "description": "Multi-Factor Authentication (MFA) enhances security by requiring users to provide at least two forms of verification to prove their identity before granting access."
+    },
+    {
+      "mitigation_id": "M1035",
+      "name": "Limit Access to Resource Over Network",
+      "description": "Restrict access to network resources, such as file shares, remote systems, and services, to only those users, accounts, or systems with a legitimate business requirement. This can include employing technologies like network concentrators, RDP gateways, and zero-trust network access (ZTNA) models, alongside hardening services and protocols."
+    },
+    {
+      "mitigation_id": "M1036",
+      "name": "Account Use Policies",
+      "description": "Account Use Policies help mitigate unauthorized access by configuring and enforcing rules that govern how and when accounts can be used. These policies include enforcing account lockout mechanisms, restricting login times, and setting inactivity timeouts. Proper configuration of these policies reduces the risk of brute-force attacks, credential theft, and unauthorized access by limiting the opportunities for malicious actors to exploit accounts."
+    },
+    {
+      "mitigation_id": "M1037",
+      "name": "Filter Network Traffic",
+      "description": "Employ network appliances and endpoint software to filter ingress, egress, and lateral network traffic. This includes protocol-based filtering, enforcing firewall rules, and blocking or restricting traffic based on predefined conditions to limit adversary movement and data exfiltration."
+    },
+    {
+      "mitigation_id": "M1038",
+      "name": "Execution Prevention",
+      "description": "Prevent the execution of unauthorized or malicious code on systems by implementing application control, script blocking, and other execution prevention mechanisms. This ensures that only trusted and authorized code is executed, reducing the risk of malware and unauthorized actions."
+    },
+    {
+      "mitigation_id": "M1040",
+      "name": "Behavior Prevention on Endpoint",
+      "description": "Behavior Prevention on Endpoint refers to the use of technologies and strategies to detect and block potentially malicious activities by analyzing the behavior of processes, files, API calls, and other endpoint events. Rather than relying solely on known signatures, this approach leverages heuristics, machine learning, and real-time monitoring to identify anomalous patterns indicative of an attack."
+    },
+    {
+      "mitigation_id": "M1042",
+      "name": "Disable or Remove Feature or Program",
+      "description": "Disable or remove unnecessary and potentially vulnerable software, features, or services to reduce the attack surface and prevent abuse by adversaries. This involves identifying software or features that are no longer needed or that could be exploited and ensuring they are either removed or properly disabled."
+    },
+    {
+      "mitigation_id": "M1043",
+      "name": "Credential Access Protection",
+      "description": "Credential Access Protection focuses on implementing measures to prevent adversaries from obtaining credentials, such as passwords, hashes, tokens, or keys, that could be used for unauthorized access. This involves restricting access to credential storage mechanisms, hardening configurations to block credential dumping methods, and using monitoring tools to detect suspicious credential-related activity."
+    },
+    {
+      "mitigation_id": "M1045",
+      "name": "Code Signing",
+      "description": "Code Signing is a security process that ensures the authenticity and integrity of software by digitally signing executables, scripts, and other code artifacts. It prevents untrusted or malicious code from executing by verifying the digital signatures against trusted sources. Code signing protects against tampering, impersonation, and distribution of unauthorized or malicious software, forming a critical defense against supply chain and software exploitation attacks."
+    },
+    {
+      "mitigation_id": "M1047",
+      "name": "Audit",
+      "description": "Auditing is the process of recording activity and systematically reviewing and analyzing the activity and system configurations. The primary purpose of auditing is to detect anomalies and identify potential threats or weaknesses in the environment. Proper auditing configurations can also help to meet compliance requirements. The process of auditing encompasses regular analysis of user behaviors and system logs in support of proactive security measures."
+    },
+    {
+      "mitigation_id": "M1048",
+      "name": "Application Isolation and Sandboxing",
+      "description": "Application Isolation and Sandboxing refers to the technique of restricting the execution of code to a controlled and isolated environment (e.g., a virtual environment, container, or sandbox). This method prevents potentially malicious code from affecting the rest of the system or network by limiting access to sensitive resources and critical operations. The goal is to contain threats and minimize their impact."
+    },
+    {
+      "mitigation_id": "M1049",
+      "name": "Antivirus/Antimalware",
+      "description": "Antivirus/Antimalware solutions utilize signatures, heuristics, and behavioral analysis to detect, block, and remediate malicious software, including viruses, trojans, ransomware, and spyware. These solutions continuously monitor endpoints and systems for known malicious patterns and suspicious behaviors that indicate compromise. Antivirus/Antimalware software should be deployed across all devices, with automated updates to ensure protection against the latest threats."
+    },
+    {
+      "mitigation_id": "M1050",
+      "name": "Exploit Protection",
+      "description": "Deploy capabilities that detect, block, and mitigate conditions indicative of software exploits. These capabilities aim to prevent exploitation by addressing vulnerabilities, monitoring anomalous behaviors, and applying exploit-mitigation techniques to harden systems and software."
+    },
+    {
+      "mitigation_id": "M1051",
+      "name": "Update Software",
+      "description": "Software updates ensure systems are protected against known vulnerabilities by applying patches and upgrades provided by vendors. Regular updates reduce the attack surface and prevent adversaries from exploiting known security gaps. This includes patching operating systems, applications, drivers, and firmware."
+    },
+    {
+      "mitigation_id": "M1053",
+      "name": "Data Backup",
+      "description": "Data Backup involves taking and securely storing backups of data from end-user systems and critical servers. It ensures that data remains available in the event of system compromise, ransomware attacks, or other disruptions. Backup processes should include hardening backup systems, implementing secure storage solutions, and keeping backups isolated from the corporate network to prevent compromise during active incidents."
+    },
+    {
+      "mitigation_id": "M1054",
+      "name": "Software Configuration",
+      "description": "Software configuration refers to making security-focused adjustments to the settings of applications, middleware, databases, or other software to mitigate potential threats. These changes help reduce the attack surface, enforce best practices, and protect sensitive data."
+    },
+    {
+      "mitigation_id": "M1057",
+      "name": "Data Loss Prevention",
+      "description": "Data Loss Prevention (DLP) involves implementing strategies and technologies to identify, categorize, monitor, and control the movement of sensitive data within an organization. This includes protecting data formats indicative of Personally Identifiable Information (PII), intellectual property, or financial data from unauthorized access, transmission, or exfiltration. DLP solutions integrate with network, endpoint, and cloud platforms to enforce security policies and prevent accidental or malicious data leaks."
+    }
+  ],
+  "technique_mitigations": [
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1017",
+      "usage_description": "Limit credential overlap across accounts and systems by training users and administrators not to use the same password for multiple accounts."
+    },
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1025",
+      "usage_description": "On Windows 8.1 and Windows Server 2012 R2, enable Protected Process Light for LSA."
+    },
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1026",
+      "usage_description": "Do not put user or admin domain accounts in the local administrator groups across systems unless they are tightly controlled, as this is often equivalent to having a local administrator account with the same password on all systems. Follow best practices for design and administration of an enterprise network to limit privileged account use across administrative tiers."
+    },
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1027",
+      "usage_description": "Ensure that local administrator accounts have complex, unique passwords across all systems on the network."
+    },
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1028",
+      "usage_description": "Consider disabling or restricting NTLM. Consider disabling WDigest authentication."
+    },
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10, enable Attack Surface Reduction (ASR) rules to secure LSASS and prevent credential stealing."
+    },
+    {
+      "technique_id": "T1003.001",
+      "mitigation_id": "M1043",
+      "usage_description": "With Windows 10, Microsoft implemented new protections called Credential Guard to protect the LSA secrets that can be used to obtain credentials through forms of credential dumping. It is not configured by default and has hardware and firmware system requirements. It also does not protect against all forms of credential dumping."
+    },
+    {
+      "technique_id": "T1005",
+      "mitigation_id": "M1057",
+      "usage_description": "Data loss prevention can restrict access to sensitive data and detect sensitive data that is unencrypted."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1018",
+      "usage_description": "Limit remote user permissions if remote access is necessary."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1026",
+      "usage_description": "Consider removing the local Administrators group from the list of groups allowed to log in through RDP."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1028",
+      "usage_description": "Change GPOs to define shorter timeouts sessions and maximum amount of time any single session can be active. Change GPOs to specify the maximum amount of time that a disconnected session stays active on the RD session host server."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1030",
+      "usage_description": "Do not leave RDP accessible from the internet. Enable firewall rules to block RDP traffic between network security zones within a network."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1032",
+      "usage_description": "Use multi-factor authentication for remote logins."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1035",
+      "usage_description": "Use remote desktop gateways."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1042",
+      "usage_description": "Disable the RDP service if it is unnecessary."
+    },
+    {
+      "technique_id": "T1021.001",
+      "mitigation_id": "M1047",
+      "usage_description": "Audit the Remote Desktop Users group membership regularly. Remove unnecessary accounts and groups from Remote Desktop Users groups."
+    },
+    {
+      "technique_id": "T1021.002",
+      "mitigation_id": "M1026",
+      "usage_description": "Deny remote use of local admin credentials to log into systems. Do not allow domain user accounts to be in the local Administrators group multiple systems."
+    },
+    {
+      "technique_id": "T1021.002",
+      "mitigation_id": "M1027",
+      "usage_description": "Do not reuse local administrator account passwords across systems. Ensure password complexity and uniqueness such that the passwords cannot be cracked or guessed."
+    },
+    {
+      "technique_id": "T1021.002",
+      "mitigation_id": "M1035",
+      "usage_description": "Consider disabling Windows administrative shares."
+    },
+    {
+      "technique_id": "T1021.002",
+      "mitigation_id": "M1037",
+      "usage_description": "Consider using the host firewall to restrict file sharing communications such as SMB."
+    },
+    {
+      "technique_id": "T1027",
+      "mitigation_id": "M1017",
+      "usage_description": "Ensure that a finite amount of ingress points to a software deployment system exist with restricted access for those required to allow and enable newly deployed software."
+    },
+    {
+      "technique_id": "T1027",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10+, enable Attack Surface Reduction (ASR) rules to prevent execution of potentially obfuscated payloads."
+    },
+    {
+      "technique_id": "T1027",
+      "mitigation_id": "M1047",
+      "usage_description": "Consider periodic review of common fileless storage locations (such as the Registry or WMI repository) to potentially identify abnormal and malicious data."
+    },
+    {
+      "technique_id": "T1027",
+      "mitigation_id": "M1049",
+      "usage_description": "Anti-virus can be used to automatically detect and quarantine suspicious files. Consider utilizing the Antimalware Scan Interface (AMSI) on Windows 10+ to analyze commands after being processed/interpreted."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1017",
+      "usage_description": "Train users not to open email attachments or click unknown links (URLs). Such training fosters more secure habits within your organization and will limit many of the risks."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1018",
+      "usage_description": "Consider defining and enforcing a naming convention for user accounts to more easily spot generic account names that do not fit the typical schema."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1022",
+      "usage_description": "Use file system access controls to protect folders such as C:\\\\Windows\\\\System32."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1038",
+      "usage_description": "Use tools that restrict program execution via application control by attributes other than file name for common operating system utilities that are needed."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1040",
+      "usage_description": "Implement security controls on the endpoint, such as a Host Intrusion Prevention System (HIPS), to identify and prevent execution of potentially malicious files (such as those with mismatching file signatures)."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1045",
+      "usage_description": "Require signed binaries."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1047",
+      "usage_description": "Audit user accounts to ensure that each one has a defined purpose."
+    },
+    {
+      "technique_id": "T1036",
+      "mitigation_id": "M1049",
+      "usage_description": "Anti-virus can be used to automatically quarantine suspicious files."
+    },
+    {
+      "technique_id": "T1041",
+      "mitigation_id": "M1031",
+      "usage_description": "Network intrusion detection and prevention systems that use network signatures to identify traffic for specific adversary malware can be used to mitigate activity at the network level. Signatures are often for unique indicators within protocols and may be based on the specific obfuscation technique used by a particular adversary or tool, and will likely be different across various malware families and versions. Adversaries will likely change tool command and control signatures over time or construct protocols in such a way to avoid detection by common defensive tools."
+    },
+    {
+      "technique_id": "T1041",
+      "mitigation_id": "M1057",
+      "usage_description": "Data loss prevention can detect and block sensitive data being sent over unencrypted protocols."
+    },
+    {
+      "technique_id": "T1047",
+      "mitigation_id": "M1018",
+      "usage_description": "By default, only administrators are allowed to connect remotely using WMI. Restrict other users who are allowed to connect, or disallow all users to connect remotely to WMI."
+    },
+    {
+      "technique_id": "T1047",
+      "mitigation_id": "M1026",
+      "usage_description": "Prevent credential overlap across systems of administrator and privileged accounts."
+    },
+    {
+      "technique_id": "T1047",
+      "mitigation_id": "M1038",
+      "usage_description": "Use application control configured to block execution of wmic.exe if it is not required for a given system or network to prevent potential misuse by adversaries. For example, in Windows 10 and Windows Server 2016 and above, Windows Defender Application Control (WDAC) policy rules may be applied to block the wmic.exe application and to prevent abuse."
+    },
+    {
+      "technique_id": "T1047",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10, enable Attack Surface Reduction (ASR) rules to block processes created by WMI commands from running. Note: many legitimate tools and applications utilize WMI for command execution."
+    },
+    {
+      "technique_id": "T1053.005",
+      "mitigation_id": "M1018",
+      "usage_description": "Limit privileges of user accounts and remediate Privilege Escalation vectors so only authorized administrators can create scheduled tasks on remote systems."
+    },
+    {
+      "technique_id": "T1053.005",
+      "mitigation_id": "M1026",
+      "usage_description": "Configure the Increase Scheduling Priority option to only allow the Administrators group the rights to schedule a priority process. This can be configured through GPO: Computer Configuration > [Policies] > Windows Settings > Security Settings > Local Policies > User Rights Assignment: Increase scheduling priority."
+    },
+    {
+      "technique_id": "T1053.005",
+      "mitigation_id": "M1028",
+      "usage_description": "Configure settings for scheduled tasks to force tasks to run under the context of the authenticated account instead of allowing them to run as SYSTEM. The associated Registry key is located at HKLM\\SYSTEM\\CurrentControlSet\\Control\\Lsa\\SubmitControl. The setting can be configured through GPO: Computer Configuration > [Policies] > Windows Settings > Security Settings > Local Policies > Security Options: Domain Controller: Allow server operators to schedule tasks, set to disabled."
+    },
+    {
+      "technique_id": "T1053.005",
+      "mitigation_id": "M1047",
+      "usage_description": "Toolkits like the PowerSploit framework contain PowerUp modules that can be used to explore systems for permission weaknesses in scheduled tasks that could be used to escalate privileges."
+    },
+    {
+      "technique_id": "T1055",
+      "mitigation_id": "M1026",
+      "usage_description": "Utilize Yama (ex: /proc/sys/kernel/yama/ptrace_scope) to mitigate ptrace based process injection by restricting the use of ptrace to privileged users only. Other mitigation controls involve the deployment of security kernel modules that provide advanced access control and process restrictions such as SELinux, grsecurity, and AppArmor."
+    },
+    {
+      "technique_id": "T1055",
+      "mitigation_id": "M1040",
+      "usage_description": "Some endpoint security solutions can be configured to block some types of process injection based on common sequences of behavior that occur during the injection process. For example, on Windows 10, Attack Surface Reduction (ASR) rules may prevent Office applications from code injection."
+    },
+    {
+      "technique_id": "T1059.001",
+      "mitigation_id": "M1026",
+      "usage_description": "When PowerShell is necessary, consider restricting PowerShell execution policy to administrators. Be aware that there are methods of bypassing the PowerShell execution policy, depending on environment configuration. PowerShell JEA (Just Enough Administration) may also be used to sandbox administration and limit what commands admins/users can execute through remote PowerShell sessions."
+    },
+    {
+      "technique_id": "T1059.001",
+      "mitigation_id": "M1038",
+      "usage_description": "Use application control where appropriate. PowerShell Constrained Language mode can be used to restrict access to sensitive or otherwise dangerous language elements such as those used to execute arbitrary Windows APIs or files (e.g., `Add-Type`)."
+    },
+    {
+      "technique_id": "T1059.001",
+      "mitigation_id": "M1042",
+      "usage_description": "It may be possible to remove PowerShell from systems when not needed, but a review should be performed to assess the impact to an environment, since it could be in use for many legitimate purposes and administrative functions. Disable/restrict the WinRM Service to help prevent uses of PowerShell for remote execution."
+    },
+    {
+      "technique_id": "T1059.001",
+      "mitigation_id": "M1045",
+      "usage_description": "Set PowerShell execution policy to execute only signed scripts."
+    },
+    {
+      "technique_id": "T1059.001",
+      "mitigation_id": "M1049",
+      "usage_description": "Anti-virus can be used to automatically quarantine suspicious files."
+    },
+    {
+      "technique_id": "T1059.003",
+      "mitigation_id": "M1038",
+      "usage_description": "Use application control where appropriate."
+    },
+    {
+      "technique_id": "T1059.005",
+      "mitigation_id": "M1021",
+      "usage_description": "Script blocking extensions can help prevent the execution of scripts and HTA files that may commonly be used during the exploitation process. For malicious code served up through ads, adblockers can help prevent that code from executing in the first place."
+    },
+    {
+      "technique_id": "T1059.005",
+      "mitigation_id": "M1038",
+      "usage_description": "Use application control where appropriate. VBA macros obtained from the Internet, based on the file's Mark of the Web (MOTW) attribute, may be blocked from executing in Office applications (ex: Access, Excel, PowerPoint, Visio, and Word) by default starting in Windows Version 2203."
+    },
+    {
+      "technique_id": "T1059.005",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10, enable Attack Surface Reduction (ASR) rules to prevent Visual Basic scripts from executing potentially malicious downloaded content ."
+    },
+    {
+      "technique_id": "T1059.005",
+      "mitigation_id": "M1042",
+      "usage_description": "Turn off or restrict access to unneeded VB components."
+    },
+    {
+      "technique_id": "T1059.005",
+      "mitigation_id": "M1049",
+      "usage_description": "Anti-virus can be used to automatically quarantine suspicious files."
+    },
+    {
+      "technique_id": "T1071.001",
+      "mitigation_id": "M1031",
+      "usage_description": "Network intrusion detection and prevention systems that use network signatures to identify traffic for specific adversary malware can be used to mitigate activity at the network level."
+    },
+    {
+      "technique_id": "T1071.001",
+      "mitigation_id": "M1037",
+      "usage_description": "Restrict and monitor outbound web traffic (HTTP/HTTPS) from critical servers to only approved destinations. Limiting the ability to initiate outbound HTTP/HTTPS connections, especially from public-facing servers, can prevent attackers from using tools like curl or wget to communicate with external C2 servers or download malicious payloads."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1013",
+      "usage_description": "Ensure that applications do not store sensitive data or credentials insecurely. (e.g. plaintext credentials in code, published credentials in repositories, or credentials in public cloud storage)."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1015",
+      "usage_description": "Disable legacy authentication, which does not support MFA, and require the use of modern authentication protocols instead."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1017",
+      "usage_description": "Applications may send push notifications to verify a login as a form of multi-factor authentication (MFA). Train users to only accept valid push notifications and to report suspicious push notifications."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1018",
+      "usage_description": "Regularly audit user accounts for activity and deactivate or remove any that are no longer needed."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1026",
+      "usage_description": "Audit domain and local accounts as well as their permission levels routinely to look for situations that could allow an adversary to gain wide access by obtaining credentials of a privileged account. These audits should also include if default accounts have been enabled, or if new local accounts are created that have not been authorized. Follow best practices for design and administration of an enterprise network to limit privileged account use across administrative tiers."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1027",
+      "usage_description": "Applications and appliances that utilize default username and password should be changed immediately after the installation, and before deployment to a production environment. When possible, applications that use SSH keys should be updated periodically and properly secured. Policies should minimize (if not eliminate) reuse of passwords between different user accounts, especially employees using the same credentials for personal accounts that may not be defended by enterprise security resources."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1032",
+      "usage_description": "Implement multi-factor authentication (MFA) across all account types, including default, local, domain, and cloud accounts, to prevent unauthorized access, even if credentials are compromised. MFA provides a critical layer of security by requiring multiple forms of verification beyond just a password. This measure significantly reduces the risk of adversaries abusing valid accounts to gain initial access, escalate privileges, maintain persistence, or evade defenses within your network."
+    },
+    {
+      "technique_id": "T1078",
+      "mitigation_id": "M1036",
+      "usage_description": "Use conditional access policies to block logins from non-compliant devices or from outside defined organization IP ranges."
+    },
+    {
+      "technique_id": "T1105",
+      "mitigation_id": "M1031",
+      "usage_description": "Network intrusion detection and prevention systems that use network signatures to identify traffic for specific adversary malware or unusual data transfer over known protocols like FTP can be used to mitigate activity at the network level. Signatures are often for unique indicators within protocols and may be based on the specific obfuscation technique used by a particular adversary or tool, and will likely be different across various malware families and versions. Adversaries will likely change tool C2 signatures over time or construct protocols in such a way as to avoid detection by common defensive tools."
+    },
+    {
+      "technique_id": "T1105",
+      "mitigation_id": "M1037",
+      "usage_description": "Use network filtering to block outbound traffic from compromised systems to unapproved external destinations. Restricting access to known, trusted IP addresses and protocols can prevent attackers from downloading malicious tools or payloads onto compromised servers after gaining initial access."
+    },
+    {
+      "technique_id": "T1110",
+      "mitigation_id": "M1018",
+      "usage_description": "Proactively reset accounts that are known to be part of breached credentials either immediately, or after detecting bruteforce attempts."
+    },
+    {
+      "technique_id": "T1110",
+      "mitigation_id": "M1027",
+      "usage_description": "Refer to NIST guidelines when creating password policies."
+    },
+    {
+      "technique_id": "T1110",
+      "mitigation_id": "M1032",
+      "usage_description": "Use multi-factor authentication. Where possible, also enable multi-factor authentication on externally facing services."
+    },
+    {
+      "technique_id": "T1110",
+      "mitigation_id": "M1036",
+      "usage_description": "Set account lockout policies after a certain number of failed login attempts to prevent passwords from being guessed. Too strict a policy may create a denial of service condition and render environments un-usable, with all accounts used in the brute force being locked-out. Use conditional access policies to block logins from non-compliant devices or from outside defined organization IP ranges. Consider blocking risky authentication requests, such as those originating from anonymizing services/proxies."
+    },
+    {
+      "technique_id": "T1133",
+      "mitigation_id": "M1021",
+      "usage_description": "Restrict all traffic to and from public Tor nodes."
+    },
+    {
+      "technique_id": "T1133",
+      "mitigation_id": "M1030",
+      "usage_description": "Deny direct remote access to internal systems through the use of network proxies, gateways, and firewalls."
+    },
+    {
+      "technique_id": "T1133",
+      "mitigation_id": "M1032",
+      "usage_description": "Use strong two-factor or multi-factor authentication for remote service accounts to mitigate an adversary's ability to leverage stolen credentials, but be aware of Multi-Factor Authentication Interception techniques for some two-factor authentication implementations."
+    },
+    {
+      "technique_id": "T1133",
+      "mitigation_id": "M1035",
+      "usage_description": "Limit access to remote services through centrally managed concentrators such as VPNs and other managed remote access systems."
+    },
+    {
+      "technique_id": "T1133",
+      "mitigation_id": "M1042",
+      "usage_description": "Disable or block remotely available services that may be unnecessary."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1016",
+      "usage_description": "Regularly scan externally facing systems for vulnerabilities and establish procedures to rapidly patch systems when critical vulnerabilities are discovered through scanning and through public disclosure."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1026",
+      "usage_description": "Use least privilege for service accounts will limit what permissions the exploited process gets on the rest of the system."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1030",
+      "usage_description": "Segment externally facing servers and services from the rest of the network with a DMZ or on separate hosting infrastructure."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1035",
+      "usage_description": "Ensure that all publicly exposed services are actually intended to be so, and restrict access to any that should only be available internally."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1037",
+      "usage_description": "Restrict outbound network traffic from public-facing servers to prevent unauthorized connections from initiating communications with attacker-controlled infrastructure. While this may not prevent the initial exploitation, it limits the attacker's ability to verify and control the compromised server post-exploit, reducing the overall impact of the attack."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1048",
+      "usage_description": "Application isolation will limit what other processes and system features the exploited target can access."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1050",
+      "usage_description": "Web Application Firewalls may be used to limit exposure of applications to prevent exploit traffic from reaching the application."
+    },
+    {
+      "technique_id": "T1190",
+      "mitigation_id": "M1051",
+      "usage_description": "Update software regularly by employing patch management for externally exposed applications."
+    },
+    {
+      "technique_id": "T1204.002",
+      "mitigation_id": "M1017",
+      "usage_description": "Use user training as a way to bring awareness to common phishing and spearphishing techniques and how to raise suspicion for potentially malicious events."
+    },
+    {
+      "technique_id": "T1204.002",
+      "mitigation_id": "M1038",
+      "usage_description": "Application control may be able to prevent the running of executables masquerading as other files."
+    },
+    {
+      "technique_id": "T1204.002",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10, various Attack Surface Reduction (ASR) rules can be enabled to prevent the execution of potentially malicious executable files (such as those that have been downloaded and executed by Office applications/scripting interpreters/email clients or that do not meet specific prevalence, age, or trusted list criteria). Note: cloud-delivered protection must be enabled for certain rules."
+    },
+    {
+      "technique_id": "T1218.011",
+      "mitigation_id": "M1050",
+      "usage_description": "Microsoft's Enhanced Mitigation Experience Toolkit (EMET) Attack Surface Reduction (ASR) feature can be used to block methods of using rundll32.exe to bypass application control."
+    },
+    {
+      "technique_id": "T1486",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10, enable cloud-delivered protection and Attack Surface Reduction (ASR) rules to block the execution of files that resemble ransomware. In AWS environments, create an IAM policy to restrict or block the use of SSE-C on S3 buckets."
+    },
+    {
+      "technique_id": "T1486",
+      "mitigation_id": "M1053",
+      "usage_description": "Consider implementing IT disaster recovery plans that contain procedures for regularly taking and testing data backups that can be used to restore organizational data. Ensure backups are stored off system and is protected from common methods adversaries may use to gain access and destroy the backups to prevent recovery. Consider enabling versioning in cloud environments to maintain backup copies of storage objects."
+    },
+    {
+      "technique_id": "T1490",
+      "mitigation_id": "M1018",
+      "usage_description": "Limit the user accounts that have access to backups to only those required. In AWS environments, consider using Service Control Policies to restrict API calls to delete backups, snapshots, and images."
+    },
+    {
+      "technique_id": "T1490",
+      "mitigation_id": "M1028",
+      "usage_description": "Consider technical controls to prevent the disabling of services or deletion of files involved in system recovery. Additionally, ensure that WinRE is enabled using the following command: reagentc /enable."
+    },
+    {
+      "technique_id": "T1490",
+      "mitigation_id": "M1038",
+      "usage_description": "Consider using application control configured to block execution of utilities such as `diskshadow.exe` that may not be required for a given system or network to prevent potential misuse by adversaries."
+    },
+    {
+      "technique_id": "T1490",
+      "mitigation_id": "M1053",
+      "usage_description": "Consider implementing IT disaster recovery plans that contain procedures for taking regular data backups that can be used to restore organizational data. Ensure backups are stored off system and is protected from common methods adversaries may use to gain access and destroy the backups to prevent recovery. In cloud environments, enable versioning on storage objects where possible, and copy backups to other accounts or regions to isolate them from the original copies. On ESXi servers, ensure that disk images and snapshots of virtual machines are regularly taken, with copies stored off system."
+    },
+    {
+      "technique_id": "T1543.003",
+      "mitigation_id": "M1018",
+      "usage_description": "Limit privileges of user accounts and groups so that only authorized administrators can interact with service changes and service configurations."
+    },
+    {
+      "technique_id": "T1543.003",
+      "mitigation_id": "M1028",
+      "usage_description": "Ensure that Driver Signature Enforcement is enabled to restrict unsigned drivers from being installed."
+    },
+    {
+      "technique_id": "T1543.003",
+      "mitigation_id": "M1040",
+      "usage_description": "On Windows 10, enable Attack Surface Reduction (ASR) rules to prevent an application from writing a signed vulnerable driver to the system. On Windows 10 and 11, enable Microsoft Vulnerable Driver Blocklist to assist in hardening against third party-developed service drivers."
+    },
+    {
+      "technique_id": "T1543.003",
+      "mitigation_id": "M1045",
+      "usage_description": "Enforce registration and execution of only legitimately signed service drivers where possible."
+    },
+    {
+      "technique_id": "T1543.003",
+      "mitigation_id": "M1047",
+      "usage_description": "Use auditing tools capable of detecting privilege and service abuse opportunities on systems within an enterprise and correct them."
+    },
+    {
+      "technique_id": "T1555",
+      "mitigation_id": "M1026",
+      "usage_description": "Limit the number of accounts and services with permission to query information from password stores to only those required. Ensure that accounts and services with permissions to query password stores only have access to the secrets they require."
+    },
+    {
+      "technique_id": "T1555",
+      "mitigation_id": "M1027",
+      "usage_description": "The password for the user's login keychain can be changed from the user's login password. This increases the complexity for an adversary because they need to know an additional password. Organizations may consider weighing the risk of storing credentials in password stores and web browsers. If system, software, or web browser credential disclosure is a significant concern, technical controls, policy, and user training may be used to prevent storage of credentials in improper locations."
+    },
+    {
+      "technique_id": "T1555",
+      "mitigation_id": "M1051",
+      "usage_description": "Perform regular software updates to mitigate exploitation risk."
+    },
+    {
+      "technique_id": "T1560",
+      "mitigation_id": "M1047",
+      "usage_description": "System scans can be performed to identify unauthorized archival utilities."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1017",
+      "usage_description": "Users can be trained to identify social engineering techniques and spearphishing emails."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1018",
+      "usage_description": "Apply user account management principles to limit permissions for accounts interacting with email attachments, ensuring that only necessary accounts have the ability to open or execute files. Restricting account privileges reduces the potential impact of malicious attachments by preventing unauthorized execution or spread of malware within the environment."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1021",
+      "usage_description": "Block unknown or unused attachments by default that should not be transmitted over email as a best practice to prevent some vectors, such as .scr, .exe, .pif, .cpl, etc. Some email scanning devices can open and analyze compressed and encrypted formats, such as zip and rar that may be used to conceal malicious attachments."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1031",
+      "usage_description": "Network intrusion prevention systems and systems designed to scan and remove malicious email attachments can be used to block activity."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1047",
+      "usage_description": "Enable auditing and monitoring for email attachments and file transfers to detect and investigate suspicious activity. Regularly review logs for anomalies related to attachments containing potentially malicious content, as well as any attempts to execute or interact with these files. This practice helps identify spearphishing attempts before they can lead to further compromise."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1049",
+      "usage_description": "Anti-virus can also automatically quarantine suspicious files."
+    },
+    {
+      "technique_id": "T1566.001",
+      "mitigation_id": "M1054",
+      "usage_description": "Use anti-spoofing and email authentication mechanisms to filter messages based on validity checks of the sender domain (using SPF) and integrity of messages (using DKIM). Enabling these mechanisms within an organization (through policies such as DMARC) may enable recipients (intra-org and cross domain) to perform similar message filtering and validation."
+    },
+    {
+      "technique_id": "T1566.002",
+      "mitigation_id": "M1017",
+      "usage_description": "Users can be trained to identify social engineering techniques and spearphishing emails with malicious links which includes phishing for consent with OAuth 2.0. Additionally, users may perform visual checks of the domains they visit; however, homographs in ASCII and in IDN domains and URL schema obfuscation may render manual checks difficult. Use email warning banners to alert users when emails contain links from external senders, prompting them to exercise caution and reducing the likelihood of falling victim to spearphishing attacks. Phishing training and other cybersecurity training may raise awareness to check URLs before visiting the sites."
+    },
+    {
+      "technique_id": "T1566.002",
+      "mitigation_id": "M1018",
+      "usage_description": "Azure AD Administrators apply limitations upon the ability for users to grant consent to unfamiliar or unverified third-party applications."
+    },
+    {
+      "technique_id": "T1566.002",
+      "mitigation_id": "M1021",
+      "usage_description": "Determine if certain websites that can be used for spearphishing are necessary for business operations and consider blocking access if activity cannot be monitored well or if it poses a significant risk."
+    },
+    {
+      "technique_id": "T1566.002",
+      "mitigation_id": "M1047",
+      "usage_description": "Audit applications and their permissions to ensure access to data and resources are limited based upon necessity and principle of least privilege."
+    },
+    {
+      "technique_id": "T1566.002",
+      "mitigation_id": "M1054",
+      "usage_description": "Use anti-spoofing and email authentication mechanisms to filter messages based on validity checks of the sender domain (using SPF) and integrity of messages (using DKIM). Enabling these mechanisms within an organization (through policies such as DMARC) may enable recipients (intra-org and cross domain) to perform similar message filtering and validation.. Furthermore, policies may enforce / install browser extensions that protect against IDN and homograph attacks."
+    },
+    {
+      "technique_id": "T1568",
+      "mitigation_id": "M1021",
+      "usage_description": "In some cases a local DNS sinkhole may be used to help prevent behaviors associated with dynamic resolution."
+    },
+    {
+      "technique_id": "T1568",
+      "mitigation_id": "M1031",
+      "usage_description": "Network intrusion detection and prevention systems that use network signatures to identify traffic for specific adversary malware can be used to mitigate activity at the network level. Malware researchers can reverse engineer malware variants that use dynamic resolution and determine future C2 infrastructure that the malware will attempt to contact, but this is a time and resource intensive effort."
+    },
+    {
+      "technique_id": "T1573",
+      "mitigation_id": "M1020",
+      "usage_description": "SSL/TLS inspection can be used to see the contents of encrypted sessions to look for network-based indicators of malware communication protocols."
+    },
+    {
+      "technique_id": "T1573",
+      "mitigation_id": "M1031",
+      "usage_description": "Network intrusion detection and prevention systems that use network signatures to identify traffic for specific adversary malware can be used to mitigate activity at the network level."
+    }
+  ]
+}
