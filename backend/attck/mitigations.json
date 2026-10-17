@@ -41,6 +41,11 @@
       "description": "Restricting file and directory permissions involves setting access controls at the file system level to limit which users, groups, or processes can read, write, or execute files. By configuring permissions appropriately, organizations can reduce the attack surface for adversaries seeking to access sensitive data, plant malicious code, or tamper with system files."
     },
     {
+      "mitigation_id": "M1024",
+      "name": "Restrict Registry Permissions",
+      "description": "Restricting registry permissions involves configuring access control settings for sensitive registry keys and hives to ensure that only authorized users or processes can make modifications. By limiting access, organizations can prevent unauthorized changes that adversaries might use for persistence, privilege escalation, or defense evasion."
+    },
+    {
       "mitigation_id": "M1025",
       "name": "Privileged Process Integrity",
       "description": "Privileged Process Integrity focuses on defending highly privileged processes (e.g., system services, antivirus, or authentication processes) from tampering, injection, or compromise by adversaries. These processes often interact with critical components, making them prime targets for techniques like code injection, privilege escalation, and process manipulation."
@@ -751,6 +756,41 @@
       "technique_id": "T1573",
       "mitigation_id": "M1031",
       "usage_description": "Network intrusion detection and prevention systems that use network signatures to identify traffic for specific adversary malware can be used to mitigate activity at the network level."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1018",
+      "usage_description": "Ensure proper user permissions are in place to prevent adversaries from disabling or interfering with security services."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1022",
+      "usage_description": "Ensure proper process and file permissions are in place to prevent adversaries from disabling or interfering with security services."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1024",
+      "usage_description": "Ensure proper Registry permissions are in place to prevent adversaries from disabling or interfering with security services."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1038",
+      "usage_description": "Use application control where appropriate, especially regarding the execution of tools outside of the organization's security policies (such as rootkit removal tools) that have been abused to impair system defenses. Ensure that only approved security applications are used and running on enterprise systems."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1042",
+      "usage_description": "Consider removing previous versions of tools that are unnecessary to the environment when possible."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1047",
+      "usage_description": "Periodically verify that tools are functioning appropriately – for example, that all expected hosts with EDRs or monitoring agents are checking in to the central console. Check EDRs to ensure that no unexpected exclusion paths have been added. In Microsoft Defender for Endpoint, exclusions can be reviewed with the `Get-MpPreference` cmdlet."
+    },
+    {
+      "technique_id": "T1685",
+      "mitigation_id": "M1054",
+      "usage_description": "Consider automatically relaunching forwarding mechanisms at recurring intervals (ex: temporal, on-logon, etc.) as well as applying appropriate change management to firewall rules and other related system configurations."
     }
   ]
 }
