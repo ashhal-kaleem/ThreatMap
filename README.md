@@ -105,7 +105,7 @@ pip install -r backend/requirements.txt
 ```bash
 python -m pytest -v
 ```
-All 73 unit, integration, and E2E tests should pass.
+All backend unit, integration, and E2E tests should pass (97 at the time of writing).
 
 ### Step 4: Run FastAPI Backend Server
 ```bash
@@ -122,6 +122,25 @@ npm install
 npm run dev
 ```
 Open `http://localhost:5173` in your browser. The Vite development server automatically proxies `/reports` and `/health` requests to `http://127.0.0.1:8000`.
+
+Frontend configuration lives in `frontend/.env` (copy `frontend/.env.example`):
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `VITE_API_BASE_URL` | API URL for deployed builds; empty = use the dev proxy | *(empty)* |
+| `VITE_DEV_PROXY_TARGET` | Backend the dev server proxies to | `http://127.0.0.1:8000` |
+| `VITE_DEV_PORT` | Dev server port | `5173` |
+| `VITE_MAX_UPLOAD_MB` | Fallback upload limit until `/health` reports the server's | `50` |
+| `VITE_IOC_PAGE_SIZE` | IOC table rows per page | `25` |
+
+The backend's upload limit and allowed CORS origins come from `backend/.env` (`MAX_UPLOAD_SIZE_MB`, `CORS_ORIGINS`). `/health` returns `max_upload_mb`, so the UI always shows and enforces the same limit as the server.
+
+Frontend quality checks:
+```bash
+cd frontend
+npm run lint   # ESLint
+npm test       # Vitest component + helper tests
+```
 
 ---
 

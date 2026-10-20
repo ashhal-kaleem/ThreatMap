@@ -25,6 +25,7 @@ from backend.app.services.pdf_service import (
     validate_pdf_bytes,
     MAX_FILE_SIZE_BYTES,
 )
+from backend.app.config import MAX_UPLOAD_SIZE_MB
 from backend.app.services.ioc_service import extract_iocs
 
 logger = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ async def upload_report(
             if total > MAX_FILE_SIZE_BYTES:
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail="File exceeds the maximum allowed limit of 50MB.",
+                    detail=f"File exceeds the maximum allowed limit of {MAX_UPLOAD_SIZE_MB}MB.",
                 )
             chunks.append(chunk)
         content = b"".join(chunks)

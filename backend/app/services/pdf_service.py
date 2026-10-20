@@ -19,9 +19,11 @@ import uuid
 from pathlib import Path
 from typing import Optional, TypedDict
 
+from backend.app.config import MAX_UPLOAD_SIZE_MB
+
 # Global Configuration
 MAGIC_BYTES = b"%PDF-"
-MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024  # 50 MB
+MAX_FILE_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 DEFAULT_TIMEOUT_SECONDS = 120
 
 # Directory paths
@@ -40,7 +42,7 @@ class PageText(TypedDict):
 def validate_pdf_bytes(content: bytes) -> None:
     """
     Validates in-memory PDF binary content.
-    Enforces the 50MB limit and validates the %PDF- magic bytes header.
+    Enforces the configured size limit and validates the %PDF- magic bytes header.
     Raises ValueError on violation.
     """
     if not content:
@@ -48,7 +50,7 @@ def validate_pdf_bytes(content: bytes) -> None:
 
     if len(content) > MAX_FILE_SIZE_BYTES:
         raise ValueError(
-            f"File size ({len(content)} bytes) exceeds the maximum allowed limit of 50MB "
+            f"File size ({len(content)} bytes) exceeds the maximum allowed limit of {MAX_UPLOAD_SIZE_MB}MB "
             f"({MAX_FILE_SIZE_BYTES} bytes)."
         )
 
@@ -71,7 +73,7 @@ def validate_pdf_file(path: Path | str) -> Path:
 
     if file_size > MAX_FILE_SIZE_BYTES:
         raise ValueError(
-            f"File size ({file_size} bytes) exceeds the maximum allowed limit of 50MB."
+            f"File size ({file_size} bytes) exceeds the maximum allowed limit of {MAX_UPLOAD_SIZE_MB}MB."
         )
 
     with open(file_path, "rb") as f:

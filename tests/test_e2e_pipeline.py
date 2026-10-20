@@ -59,6 +59,7 @@ def test_health_check(client):
     data = response.json()
     assert data["status"] == "ok"
     assert data["service"] == "threatmap-lite-backend"
+    assert data["max_upload_mb"] > 0  # frontend reads the upload limit from here
 
 
 def test_upload_invalid_non_pdf(client):
