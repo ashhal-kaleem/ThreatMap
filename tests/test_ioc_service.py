@@ -16,7 +16,7 @@ from backend.app.services.ioc_service import (
 
 
 def test_normalize_defanged():
-    assert normalize_defanged("192[.]0[.]2[.]1") == "192.0.2.1"
+    assert normalize_defanged("45[.]137[.]21[.]1") == "45.137.21.1"
     assert normalize_defanged("malicious(.)example(.)com") == "malicious.example.com"
     assert normalize_defanged("evil{.}org") == "evil.org"
     assert normalize_defanged("hxxps[:]//evil[.]com/gate") == "https://evil.com/gate"
@@ -26,8 +26,8 @@ def test_normalize_defanged():
 
 def test_ipv4_validation():
     # Public & test IPs should be valid
-    assert is_valid_ipv4("198.51.100.1") is True
-    assert is_valid_ipv4("203.0.113.50") is True
+    assert is_valid_ipv4("185.141.63.1") is True
+    assert is_valid_ipv4("194.165.16.50") is True
     assert is_valid_ipv4("8.8.8.8") is True
 
     # RFC 1918 Private, loopback, link-local, multicast, and broadcast IPs should be filtered out
@@ -51,13 +51,13 @@ def test_ipv4_version_string_rejection():
     pages = [
         {
             "page_number": 1,
-            "page_text": "Release version 1.2.3.4.5 was deployed. The actual C2 was 198.51.100.99.",
+            "page_text": "Release version 1.2.3.4.5 was deployed. The actual C2 was 185.141.63.99.",
         }
     ]
     iocs = extract_iocs(pages)
     ips = [i["value"] for i in iocs if i["type"] == "ipv4"]
     assert "1.2.3.4" not in ips
-    assert "198.51.100.99" in ips
+    assert "185.141.63.99" in ips
 
 
 def test_domain_validation():
@@ -67,7 +67,7 @@ def test_domain_validation():
     assert is_valid_domain("update.evil.xyz") is True
 
     # Exclude IP addresses
-    assert is_valid_domain("192.0.2.1") is False
+    assert is_valid_domain("45.137.21.1") is False
 
     # Exclude common file extensions
     assert is_valid_domain("report.pdf") is False
@@ -163,28 +163,28 @@ def test_ipv4_defanging_and_private_filtering():
     pages = [
         {
             "page_number": 4,
-            "page_text": "Attacker IP: 198.51.100[.]22 was active. Internal probe from 192.168.1[.]50 was discarded.",
+            "page_text": "Attacker IP: 185.141.63[.]22 was active. Internal probe from 192.168.1[.]50 was discarded.",
         }
     ]
     iocs = extract_iocs(pages)
     ips = [i for i in iocs if i["type"] == "ipv4"]
 
     assert len(ips) == 1
-    assert ips[0]["value"] == "198.51.100.22"
+    assert ips[0]["value"] == "185.141.63.22"
     assert ips[0]["source_page"] == 4
-    assert "198.51.100[.]22" in ips[0]["evidence"] or "198.51.100.22" in ips[0]["evidence"]
+    assert "185.141.63[.]22" in ips[0]["evidence"] or "185.141.63.22" in ips[0]["evidence"]
 
 
 def test_page_text_backward_compatibility():
     # Test that both 'page_text' and 'text' keys work seamlessly
-    pages_with_page_text = [{"page_number": 1, "page_text": "IOC: 198.51.100.10"}]
-    pages_with_legacy_text = [{"page_number": 1, "text": "IOC: 198.51.100.20"}]
+    pages_with_page_text = [{"page_number": 1, "page_text": "IOC: 185.141.63.10"}]
+    pages_with_legacy_text = [{"page_number": 1, "text": "IOC: 185.141.63.20"}]
 
     iocs1 = extract_iocs(pages_with_page_text)
     iocs2 = extract_iocs(pages_with_legacy_text)
 
-    assert iocs1[0]["value"] == "198.51.100.10"
-    assert iocs2[0]["value"] == "198.51.100.20"
+    assert iocs1[0]["value"] == "185.141.63.10"
+    assert iocs2[0]["value"] == "185.141.63.20"
 
 
 def test_deduplication_across_pages():
@@ -595,3 +595,46 @@ def test_email_local_part_suppression():
     assert "malware-payload.download" in domains
     assert "active-threat.pro" in domains
     assert "security-corp.com" in domains
+
+
+
+# --- Regression tests from code review (fix/ioc-extraction-review) ---
+
+def _values(text):
+    from backend.app.services.ioc_service import extract_iocs
+    return {(i["type"], i["value"]) for i in extract_iocs([{"page_number": 1, "page_text": text}])}
+
+
+def test_code_identifiers_and_markdown_files_are_not_domains():
+    found = _values("See readme.md, then window.location and process.exit and document.write for details.")
+    assert not any(t == "domain" for t, _ in found)
+
+
+def test_real_tlds_still_extracted():
+    found = _values("C2 at evil-update.top, bad-site[.]ru and xn--80ak6aa92e.com")
+    assert ("domain", "evil-update.top") in found
+    assert ("domain", "bad-site.ru") in found
+    assert ("domain", "xn--80ak6aa92e.com") in found
+
+
+def test_onion_domains_still_extracted():
+    found = _values("Leak site: omx5iqrdbsoitf3q4xexrqw5r5tfw7vp3vl3li3lfo7saabxazshnead.onion")
+    assert ("domain", "omx5iqrdbsoitf3q4xexrqw5r5tfw7vp3vl3li3lfo7saabxazshnead.onion") in found
+
+
+def test_seven_digit_cve_preserved_and_footnote_still_stripped():
+    from backend.app.services.ioc_service import normalize_cve
+    assert normalize_cve("CVE-2017-1000117") == "CVE-2017-1000117"
+    assert normalize_cve("CVE-2024-938038") == "CVE-2024-9380"
+
+
+def test_rfc5737_documentation_ips_excluded():
+    found = _values("Example hosts 192.0.2.10, 198.51.100.7 and 203.0.113.5; real C2 185.220.101.1")
+    assert {v for t, v in found if t == "ipv4"} == {"185.220.101.1"}
+
+
+def test_public_email_and_storage_providers_not_domains():
+    found = _values("Contact karakurtlair@gmail.com or x@protonmail.com; data exfiltrated to Mega.nz via evil-drop.top")
+    domains = {v for t, v in found if t == "domain"}
+    assert "gmail.com" not in domains and "protonmail.com" not in domains and "mega.nz" not in domains
+    assert "evil-drop.top" in domains

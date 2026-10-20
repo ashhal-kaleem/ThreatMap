@@ -7,11 +7,11 @@
     "pages": [
       {
         "page_number": 1,
-        "page_text": "Executive Threat Summary:\nDuring the incident triage, security analysts identified activity targeting CVE-2021-44228 (Log4Shell). The adversaries connected from external IP 203.0.113.15 to pivot into internal host 192.168.1.100 (which is private and ignored). Secondary beaconing was observed communicating with hxxps://update-check[.]net/payload.bin and raw domain c2-telemetry[.]com.\nLocal forensic analysis examined suspicious files report.pdf and setup.exe."
+        "page_text": "Executive Threat Summary:\nDuring the incident triage, security analysts identified activity targeting CVE-2021-44228 (Log4Shell). The adversaries connected from external IP 194.165.16.15 to pivot into internal host 192.168.1.100 (which is private and ignored). Secondary beaconing was observed communicating with hxxps://update-check[.]net/payload.bin and raw domain c2-telemetry[.]com.\nLocal forensic analysis examined suspicious files report.pdf and setup.exe."
       },
       {
         "page_number": 2,
-        "page_text": "Forensic Hash Artifacts:\nThe dropped artifact exhibits the following cryptographic checksums:\nMD5: 5d41402abc4b2a76b9719d911017c592\nSHA1: 2aae6c35c94fcfb415dbe95f408b9ce91ee846ed\nSHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nAdditionally, a fallback C2 address was observed at 198.51.100.22."
+        "page_text": "Forensic Hash Artifacts:\nThe dropped artifact exhibits the following cryptographic checksums:\nMD5: 5d41402abc4b2a76b9719d911017c592\nSHA1: 2aae6c35c94fcfb415dbe95f408b9ce91ee846ed\nSHA256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nAdditionally, a fallback C2 address was observed at 185.141.63.22."
       }
     ],
     "ground_truth": [
@@ -23,7 +23,7 @@
       },
       {
         "type": "ipv4",
-        "value": "203.0.113.15",
+        "value": "194.165.16.15",
         "page_number": 1,
         "notes": "External routable adversary IP"
       },
@@ -65,7 +65,7 @@
       },
       {
         "type": "ipv4",
-        "value": "198.51.100.22",
+        "value": "185.141.63.22",
         "page_number": 2,
         "notes": "Fallback C2 IPv4"
       }

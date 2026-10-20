@@ -78,7 +78,7 @@ class TestGroundTruthNormalization:
         assert normalize_ground_truth_value("url", "hxxps://evil[.]com/gate") == "https://evil.com/gate"
 
     def test_defanged_ipv4_normalization(self):
-        assert normalize_ground_truth_value("ipv4", "198.51.100[.]24") == "198.51.100.24"
+        assert normalize_ground_truth_value("ipv4", "185.141.63[.]24") == "185.141.63.24"
 
 
 class TestSchemaValidation:
@@ -123,7 +123,7 @@ class TestSchemaValidation:
         record = {
             "report_id": "REP-1",
             "pages": [{"page_number": 1, "page_text": "Sample"}],
-            "ground_truth": [{"type": "ipv4", "value": "198.51.100.1", "page_number": 0}],
+            "ground_truth": [{"type": "ipv4", "value": "185.141.63.1", "page_number": 0}],
         }
         with pytest.raises(ValueError, match="'page_number' must be an integer >= 1"):
             validate_annotation_record(record)
@@ -140,11 +140,11 @@ class TestReportEvaluationLogic:
             "report_id": "REP-DUP",
             "synthetic": True,
             "pages": [
-                {"page_number": 1, "page_text": "C2 IP is 198.51.100.55 here."},
-                {"page_number": 2, "page_text": "Reminder: C2 IP is 198.51.100.55 again."},
+                {"page_number": 1, "page_text": "C2 IP is 185.141.63.55 here."},
+                {"page_number": 2, "page_text": "Reminder: C2 IP is 185.141.63.55 again."},
             ],
             "ground_truth": [
-                {"type": "ipv4", "value": "198.51.100.55", "page_number": 1}
+                {"type": "ipv4", "value": "185.141.63.55", "page_number": 1}
             ],
         }
         eval_res = evaluate_report(record, page_aware=False)
@@ -160,12 +160,12 @@ class TestReportEvaluationLogic:
             "report_id": "REP-GT-DUP",
             "synthetic": True,
             "pages": [
-                {"page_number": 1, "page_text": "C2 IP is 198.51.100.99."},
-                {"page_number": 2, "page_text": "C2 IP is 198.51.100.99 again."},
+                {"page_number": 1, "page_text": "C2 IP is 185.141.63.99."},
+                {"page_number": 2, "page_text": "C2 IP is 185.141.63.99 again."},
             ],
             "ground_truth": [
-                {"type": "ipv4", "value": "198.51.100.99", "page_number": 1, "notes": "First seen"},
-                {"type": "ipv4", "value": "198.51.100.99", "page_number": 2, "notes": "Second seen"},
+                {"type": "ipv4", "value": "185.141.63.99", "page_number": 1, "notes": "First seen"},
+                {"type": "ipv4", "value": "185.141.63.99", "page_number": 2, "notes": "Second seen"},
             ],
         }
         eval_res = evaluate_report(record, page_aware=False)
@@ -180,11 +180,11 @@ class TestReportEvaluationLogic:
             "report_id": "REP-PAGE",
             "synthetic": True,
             "pages": [
-                {"page_number": 1, "page_text": "C2 server is 198.51.100.77."},
+                {"page_number": 1, "page_text": "C2 server is 185.141.63.77."},
             ],
             "ground_truth": [
                 # Ground truth incorrectly specifies page 2 instead of 1
-                {"type": "ipv4", "value": "198.51.100.77", "page_number": 2}
+                {"type": "ipv4", "value": "185.141.63.77", "page_number": 2}
             ],
         }
         eval_res = evaluate_report(record, page_aware=True)
@@ -200,21 +200,21 @@ class TestReportEvaluationLogic:
             "pages": [
                 {
                     "page_number": 1,
-                    # Text contains 198.51.100.1 (not in GT -> FP)
-                    "page_text": "Observed connection to 198.51.100.1.",
+                    # Text contains 185.141.63.1 (not in GT -> FP)
+                    "page_text": "Observed connection to 185.141.63.1.",
                 }
             ],
             "ground_truth": [
-                # GT expects 203.0.113.5 (not in text -> FN)
-                {"type": "ipv4", "value": "203.0.113.5", "notes": "Expected adversary IP"}
+                # GT expects 194.165.16.5 (not in text -> FN)
+                {"type": "ipv4", "value": "194.165.16.5", "notes": "Expected adversary IP"}
             ],
         }
         eval_res = evaluate_report(record, page_aware=False)
         assert eval_res.total_tp == 0
         assert eval_res.total_fp == 1
         assert eval_res.total_fn == 1
-        assert eval_res.false_positives[0]["value"] == "198.51.100.1"
-        assert eval_res.false_negatives[0]["value"] == "203.0.113.5"
+        assert eval_res.false_positives[0]["value"] == "185.141.63.1"
+        assert eval_res.false_negatives[0]["value"] == "194.165.16.5"
 
     def test_empty_pages_and_ground_truth(self):
         record = {

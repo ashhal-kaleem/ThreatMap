@@ -1,9 +1,12 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+
+const PAGE_SIZE = 25;
 
 export default function IOCTable({ iocs = [] }) {
   const [selectedFilter, setSelectedFilter] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedValue, setCopiedValue] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Group hashes together or allow individual type matching
   const isHashType = (type) => ['md5', 'sha1', 'sha256'].includes(type.toLowerCase());
@@ -49,6 +52,16 @@ export default function IOCTable({ iocs = [] }) {
       return true;
     });
   }, [iocs, selectedFilter, searchQuery]);
+
+  // Pagination: reset to page 1 whenever the filter, search, or data changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [iocs, selectedFilter, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredIOCs.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pagedIOCs = filteredIOCs.slice(pageStart, pageStart + PAGE_SIZE);
 
   const handleCopy = (value) => {
     navigator.clipboard.writeText(value);
@@ -136,7 +149,7 @@ export default function IOCTable({ iocs = [] }) {
               </tr>
             </thead>
             <tbody>
-              {filteredIOCs.map((ioc, idx) => {
+              {pagedIOCs.map((ioc, idx) => {
                 const typeClass = `type-${(ioc.type || '').toLowerCase()}`;
                 const isCopied = copiedValue === ioc.value;
 
@@ -171,6 +184,31 @@ export default function IOCTable({ iocs = [] }) {
           </table>
         )}
       </div>
+
+      {/* Pagination */}
+      {filteredIOCs.length > PAGE_SIZE && (
+        <div className="pagination">
+          <button
+            type="button"
+            className="filter-btn"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+          >
+            ← Prev
+          </button>
+          <span className="pagination-info">
+            {pageStart + 1}–{Math.min(pageStart + PAGE_SIZE, filteredIOCs.length)} of {filteredIOCs.length} · Page {safePage} of {totalPages}
+          </span>
+          <button
+            type="button"
+            className="filter-btn"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+          >
+            Next →
+          </button>
+        </div>
+      )}
     </div>
   );
 }

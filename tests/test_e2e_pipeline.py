@@ -33,7 +33,7 @@ def create_mock_threat_pdf() -> bytes:
     p1.insert_text(
         (50, 72),
         "Threat Advisory: APT-Test Intrusions\n"
-        "C2 communication observed connecting to 198.51.100.25 on port 443.\n"
+        "C2 communication observed connecting to 185.141.63.25 on port 443.\n"
         "Actors beaconed to hxxps://malicious-command[.]org/gate.php\n"
         "Reconnaissance probed victim-portal[.]net.\n"
     )
@@ -99,7 +99,7 @@ def test_e2e_upload_and_extraction_workflow(client):
         values_by_type[i["type"]].append(i["value"])
 
     # Refanged IPv4
-    assert "198.51.100.25" in values_by_type.get("ipv4", [])
+    assert "185.141.63.25" in values_by_type.get("ipv4", [])
     # Refanged URL
     assert "https://malicious-command.org/gate.php" in values_by_type.get("url", [])
     # Refanged Domain
@@ -111,9 +111,9 @@ def test_e2e_upload_and_extraction_workflow(client):
     assert "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" in values_by_type.get("sha256", [])
 
     # Check page accuracy
-    ipv4_ioc = next(i for i in iocs if i["value"] == "198.51.100.25")
+    ipv4_ioc = next(i for i in iocs if i["value"] == "185.141.63.25")
     assert ipv4_ioc["source_page"] == 1
-    assert "198.51.100.25" in ipv4_ioc["evidence"]
+    assert "185.141.63.25" in ipv4_ioc["evidence"]
 
     cve_ioc = next(i for i in iocs if i["value"] == "CVE-2023-38606")
     assert cve_ioc["source_page"] == 2

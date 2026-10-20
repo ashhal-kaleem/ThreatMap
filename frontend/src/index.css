@@ -429,3 +429,20 @@ body {
   color: var(--text-secondary);
   font-size: 0.95rem;
 }
+
+/* IOC table pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.pagination-info {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.pagination .filter-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

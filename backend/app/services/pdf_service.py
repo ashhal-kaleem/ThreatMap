@@ -94,8 +94,9 @@ def sanitize_filename(filename: str) -> str:
     if not filename or not filename.strip():
         return f"report_{uuid.uuid4().hex[:8]}.pdf"
 
-    # Extract base name to strip any relative or absolute paths
-    base_name = Path(filename).name
+    # Extract base name to strip any relative or absolute paths.
+    # Normalize Windows separators first so "..\\..\\calc.exe" is handled on Linux too.
+    base_name = Path(filename.replace("\\", "/")).name
 
     # Remove null bytes and control characters
     base_name = re.sub(r"[\x00-\x1f\x7f]", "", base_name)

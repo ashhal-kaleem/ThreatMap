@@ -100,7 +100,7 @@ def test_extract_pages_valid_multipage(temp_dir):
     texts = [
         "Executive Summary: Threat actor APT29 compromised multiple accounts.",
         "Technical Analysis: PowerShell commands were executed on the DC.",
-        "Indicators: C2 communication identified to 198.51.100.15.",
+        "Indicators: C2 communication identified to 185.141.63.15.",
     ]
     create_sample_pdf(pdf_path, texts)
 
@@ -117,7 +117,7 @@ def test_extract_pages_valid_multipage(temp_dir):
     assert pages[1]["page_text"] == pages[1]["text"]
 
     assert pages[2]["page_number"] == 3
-    assert "198.51.100.15" in pages[2]["page_text"]
+    assert "185.141.63.15" in pages[2]["page_text"]
     assert pages[2]["page_text"] == pages[2]["text"]
 
 
@@ -164,3 +164,9 @@ def test_extract_pages_nonexistent_file(temp_dir):
     nonexistent = temp_dir / "missing.pdf"
     with pytest.raises(FileNotFoundError):
         extract_pages(nonexistent)
+
+
+
+def test_windows_path_traversal_sanitized():
+    from backend.app.services.pdf_service import sanitize_filename
+    assert sanitize_filename("C:\\Users\\x\\..\\report.pdf") == "report.pdf"
