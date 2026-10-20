@@ -95,6 +95,8 @@ FILE_EXTENSIONS = {
     "pem", "crt", "cer", "key", "pfx", "p12", "stix", "taxii", "hzn",
     # Reconnaissance target configs & proprietary event logs
     "evd", "production", "development", "project", "old", "prod", "local",
+    # Windows registry hive dumps (sam.hiv, system.hiv); .hiv is a valid but near-unused TLD
+    "hiv",
 }
 
 # Curated reference authorities, government CSIRTs, standard bodies, security research vendors,
@@ -103,7 +105,9 @@ REFERENCE_DOMAINS = {
     # US Government & Incident Response Authorities
     "cisa.gov", "cisa.dhs.gov", "us-cert.gov", "fbi.gov", "nsa.gov",
     "defense.gov", "justice.gov", "dni.gov", "energy.gov", "treasury.gov",
-    "stopransomware.gov",
+    "stopransomware.gov", "ic3.gov", "dhs.gov", "uscg.mil",
+    # Information-sharing bodies and reward/reporting programmes
+    "cisecurity.org", "rewardsforjustice.net",
     # International Cybersecurity Agencies
     "cyber.gov.au", "cyber.gc.ca", "ncsc.gov.uk", "ncsc.govt.nz",
     "cert.ssi.gouv.fr", "ssi.gouv.fr", "cyber.gouv.fr", "anssi.gouv.fr",
@@ -134,6 +138,15 @@ PLATFORM_HOSTING_DOMAINS = {
     "bitbucket.org", "discord.com", "telegram.org", "surge.sh",
     # Public file-sharing / cloud storage commonly abused for exfiltration (apex is not adversary infra)
     "mega.nz", "mega.io", "dropbox.com", "drive.google.com", "onedrive.live.com", "transfer.sh",
+    "anonfiles.com", "ufile.io", "sendspace.com", "catbox.moe", "file.io", "wetransfer.com",
+    # Internet scanning services referenced as reconnaissance tooling
+    "shodan.io", "censys.io",
+}
+
+# Services where only the apex is benign: subdomains are per-user and can be adversary
+# infrastructure (e.g. 149.248.35.200.sslip.io, <random>.ngrok.io), so only the bare apex is filtered.
+APEX_ONLY_SERVICE_DOMAINS = {
+    "sslip.io", "nip.io", "ngrok.io", "ngrok.com", "ngrok-free.app", "trycloudflare.com",
 }
 
 # Public email providers: the provider domain of an adversary email address
@@ -142,7 +155,7 @@ PUBLIC_EMAIL_PROVIDERS = {
     "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com",
     "protonmail.com", "proton.me", "pm.me", "tutanota.com", "tuta.io", "mail.ru",
     "yandex.ru", "yandex.com", "aol.com", "icloud.com", "gmx.com", "gmx.net", "zoho.com",
-    "onionmail.org", "cock.li",
+    "onionmail.org", "cock.li", "rambler.ru", "inbox.ru", "bk.ru", "list.ru",
 }
 
 # Detection prefix pattern for antivirus engine signatures
@@ -365,6 +378,19 @@ def is_version_or_ua_ip(match_span: tuple[int, int], line: str, prev_line: str =
     return False
 
 
+def is_network_range_ip(match_span: tuple[int, int], line: str) -> bool:
+    """
+    Detects an IPv4 match that is a network block from WHOIS/RDAP output or CIDR notation
+    (e.g. 'inetnum: 179.60.147.0/24', 'NetRange: 108.62.0.0 - 108.62.255.255'), not a host IOC.
+    """
+    start, end = match_span
+    if re.match(r"/\d{1,2}\b", line[end:]):
+        return True
+    if re.search(r"\b(?:inetnum|inet6num|netrange|cidr|route|inetnum-up)\s*:", line[:start], re.IGNORECASE):
+        return True
+    return False
+
+
 def is_av_signature(match_span: tuple[int, int], line: str) -> bool:
     """
     Detects if a domain match is part of an antivirus threat detection signature
@@ -486,6 +512,10 @@ def is_valid_domain(domain_str: str) -> bool:
 
     # Discard reference authorities & documentation placeholders
     if is_reference_domain(domain):
+        return False
+
+    # Discard the bare apex of per-user subdomain services (subdomains stay valid)
+    if domain in APEX_ONLY_SERVICE_DOMAINS:
         return False
 
     # Validate each label
@@ -705,7 +735,11 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
             # 6. Extract IPv4 addresses (excluding version numbers and User-Agent strings)
             for match in IPV4_PATTERN.finditer(normalized_line):
                 ip_val = match.group(0)
-                if is_valid_ipv4(ip_val) and not is_version_or_ua_ip(match.span(), normalized_line, prev_line):
+                if (
+                    is_valid_ipv4(ip_val)
+                    and not is_version_or_ua_ip(match.span(), normalized_line, prev_line)
+                    and not is_network_range_ip(match.span(), normalized_line)
+                ):
                     key = ("ipv4", ip_val)
                     if key not in seen_iocs:
                         seen_iocs.add(key)

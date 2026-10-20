@@ -380,3 +380,6 @@ python -m eval.evaluate_annotations --review-queue eval/heldout_review.csv --pdf
 | **Micro** | **347** | **347** | **21** | **13** | **0** | **0.943** | **1.000** | **0.971** |
 
 Recall is measured within the candidate pool (closed world). Main error source: legitimate public services (ngrok, anonfiles, sendspace, catbox, rambler.ru), reporting-contact domains, and registry hive file names (`sam.hiv`) extracted as domains.
+
+**Post-evaluation fix:** after the results above were recorded, filters were added for the false-positive classes they revealed. Re-running gives micro P 0.991 / F1 0.996 (domain P 0.955, URL P 0.714). That number is optimistic because the rules were chosen with these labels in view. Quote the table above as the held-out result.
+

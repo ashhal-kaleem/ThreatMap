@@ -638,3 +638,31 @@ def test_public_email_and_storage_providers_not_domains():
     domains = {v for t, v in found if t == "domain"}
     assert "gmail.com" not in domains and "protonmail.com" not in domains and "mega.nz" not in domains
     assert "evil-drop.top" in domains
+
+
+def test_heldout_fp_classes_filtered_but_subdomains_kept():
+    """Regression for false-positive classes found on the held-out set (post-evaluation fix)."""
+    pages = [
+        {
+            "page_number": 1,
+            "text": (
+                "Report to Ic3.gov or SOC@cisecurity.org or NRC@uscg.mil.\n"
+                "Actors used Shodan (Shodan[.]io) and NGROK (ngrok[.]io) to tunnel.\n"
+                "Tunnel host abc123.ngrok[.]io and https://149.248.35[.]200.sslip.io observed.\n"
+                "Exfil via files.catbox[.]moe; contact yacashcash@rambler[.]ru\n"
+                "Dumped sam.hiv, system.hiv and security.hiv\n"
+                "inetnum: 179.60.147.0/24\n"
+                "C2 at 179.60.147[.]4\n"
+            ),
+        }
+    ]
+    iocs = extract_iocs(pages)
+    domains = {i["value"] for i in iocs if i["type"] == "domain"}
+    ips = {i["value"] for i in iocs if i["type"] == "ipv4"}
+    for benign in ("ic3.gov", "cisecurity.org", "uscg.mil", "shodan.io", "ngrok.io",
+                   "files.catbox.moe", "rambler.ru", "sam.hiv", "system.hiv", "security.hiv"):
+        assert benign not in domains, benign
+    assert "abc123.ngrok.io" in domains
+    assert "149.248.35.200.sslip.io" in domains
+    assert "179.60.147.0" not in ips
+    assert "179.60.147.4" in ips
