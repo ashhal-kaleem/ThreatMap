@@ -110,11 +110,31 @@ desktop.ini
 *.log
 
 # ------------------------------------------------------------------------------
-# 8. Evaluation Tooling Output & Scratch Artifacts
+# 8. Internal Handoff Documents & Sensitive Notes
 # ------------------------------------------------------------------------------
-# Generated evaluation output
-eval/eval_results.json
+*HANDOFF*.md
+*handoff*.md
+backend/*HANDOFF*.md
+backend/*handoff*.md
 
-# Local intermediate audit worksheets
+# ------------------------------------------------------------------------------
+# 9. Private Evaluation Datasets, Annotations & Review Reports
+# ------------------------------------------------------------------------------
+eval/eval_results.json
 eval/*_worksheet.md
 eval/evidence_review_sheet.md
+eval/*_report.md
+eval/*review*.md
+eval/*.csv
+eval/*.json
+
+# Explicitly preserve public schemas, templates, and synthetic test fixtures
+!eval/annotation_template.json
+!eval/dataset_schema.json
+!eval/review_queue_template.csv
+!eval/manual_review.csv
+!eval/review_queue_subset.csv
+!eval/test_data/
+!eval/test_data/**
+
+

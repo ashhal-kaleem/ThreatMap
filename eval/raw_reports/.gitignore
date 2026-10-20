@@ -1,4 +1,5 @@
-# Ignore all raw PDF files placed in this directory
-*
+# Track raw PDF reports for evaluation test suites
+!*.pdf
 !.gitignore
 !.gitkeep
+
