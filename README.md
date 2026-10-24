@@ -13,7 +13,7 @@ The **PDF & IOC Intelligence Module** is the foundational deterministic ingestio
 1. **PDF Ingestion & Validation:** Validating uploaded threat advisories (`%PDF-` magic bytes header, 50MB file size ceiling, filename sanitization against path traversal and reserved characters).
 2. **Subprocess PyMuPDF Extraction:** Executing PyMuPDF (`fitz`) in an isolated subprocess (`pdf_worker.py`) with a strict 120-second timeout to prevent denial-of-service from malformed or infinite stream PDFs.
 3. **IOC Extraction, Defanging & Normalization:** Detecting, refanging, canonicalizing, and deduplicating seven indicator types (`ipv4`, `domain`, `url`, `md5`, `sha1`, `sha256`, `cve`) with surrounding evidence snippet extraction.
-4. **Database Persistence & REST APIs:** Persisting structured page blocks into `report_pages` and verified indicators into `iocs` tables, exposing REST endpoints (`POST /reports/upload`, `GET /reports/{id}/status`, `GET /reports/{id}/iocs`, `GET /reports/{id}/results`).
+4. **Database Persistence & REST APIs:** Persisting structured page blocks into `report_pages` and extracted indicators (with page and evidence) into `iocs` tables, exposing REST endpoints (`POST /reports/upload`, `GET /reports/{id}/status`, `GET /reports/{id}/iocs`, `GET /reports/{id}/results`).
 5. **Interactive Analyst UI:** Delivering responsive dark-mode analyst interfaces (`UploadZone.jsx`, `IOCTable.jsx`) with drag-and-drop, category filtering, search, and one-click copying.
 6. **Ground-Truth Evaluation:** Providing an independent, reproducible evaluation framework (`eval/ioc_eval.py`) with full traceability and explicit labeling provenance.
 
@@ -216,7 +216,7 @@ The `ioc_service.py` module applies deterministic regular expressions and post-e
 
 ## 7. Ground-Truth Evaluation Workflow
 
-The evaluation suite (`eval/`) provides an empirical assessment of extraction performance against a subset of verified CISA advisories:
+The evaluation suite (`eval/`) provides an empirical assessment of extraction performance against CISA/NCSC advisories: a human-reviewed tuning set and an AI-assisted held-out set (see provenance below):
 
 ```bash
 # Run evaluation benchmark
