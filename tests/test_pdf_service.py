@@ -8,7 +8,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 import pytest
 
 from backend.app.services.pdf_service import (
