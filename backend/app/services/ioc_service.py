@@ -18,7 +18,7 @@ Responsibilities:
 import ipaddress
 import re
 from pathlib import Path
-from typing import TypedDict
+from typing import Optional, TypedDict
 
 
 def _load_iana_tlds() -> frozenset[str]:
@@ -146,7 +146,7 @@ PLATFORM_HOSTING_DOMAINS = {
 # Services where only the apex is benign: subdomains are per-user and can be adversary
 # infrastructure (e.g. 149.248.35.200.sslip.io, <random>.ngrok.io), so only the bare apex is filtered.
 APEX_ONLY_SERVICE_DOMAINS = {
-    "sslip.io", "nip.io", "ngrok.io", "ngrok.com", "ngrok-free.app", "trycloudflare.com",
+    "sslip.io", "nip.io", "slip.io", "ngrok.io", "ngrok.com", "ngrok-free.app", "trycloudflare.com",
 }
 
 # Public email providers: the provider domain of an adversary email address
@@ -268,6 +268,12 @@ def is_reference_url(norm_url: str, host: str, raw_match: str = "", context: str
             path_part = norm_url.split("://", 1)[-1].split("?", 1)[0].split("#", 1)[0]
             if any(path_part.lower().endswith(f".{ext}") for ext in ("php", "x86_64", "exe", "bin", "sh", "elf", "ps1", "txt", "jsp", "asp", "aspx")):
                 return False
+
+            # The bare root of a public service (https://www.sendspace.com, https://ufile.io/) names the
+            # abused service, not an adversary endpoint: no path means nothing actor-controlled to block.
+            after_host = path_part.split("/", 1)[1] if "/" in path_part else ""
+            if not after_host.strip("/"):
+                return True
 
             # Explicit negative signals: documentation, guidance, tools, references on the current line or URL path
             check_text = f"{line} {norm_url}" if line else f"{context} {norm_url}"
@@ -581,6 +587,50 @@ def extract_evidence_snippet(line: str, match_str: str, max_length: int = 180) -
     return snippet
 
 
+# A domain broken across PDF lines at a dot / defanged dot / hyphen, e.g. "update.evil-\ncdn.com"
+# or "evil[.]\ncom". A plain "word." at line end is treated as a sentence end, not a wrap.
+_WRAP_TAIL = re.compile(
+    r"(?:^|(?<=[\s(\[\"']))((?:[a-zA-Z0-9\-]+(?:\[\.\]|\(\.\)|\{\.\}|\[dot\]|\(dot\)|\.))*[a-zA-Z0-9\-]*"
+    r"(?:\[\.\]|\(\.\)|\{\.\}|\[dot\]|\(dot\)|\.|-))$",
+    re.IGNORECASE,
+)
+_WRAP_HEAD = re.compile(r"^\s*([a-zA-Z0-9][a-zA-Z0-9\-\.\[\]\(\)\{\}]*)")
+
+
+def find_wrapped_domain(line: str, next_line: str) -> Optional[tuple[str, str]]:
+    """
+    Detects a domain split across two PDF text lines.
+    Returns (joined_raw_token, continuation_token_on_next_line) or None.
+    Only joins when the tail already looks like a partial domain (contains a dot / defanged dot
+    before the break) or breaks at a hyphen, and the joined token validates as a domain.
+    """
+    if not line or not next_line:
+        return None
+    tail_m = _WRAP_TAIL.search(line.rstrip())
+    head_m = _WRAP_HEAD.match(next_line)
+    if not tail_m or not head_m:
+        return None
+    tail = tail_m.group(1)
+    head = head_m.group(1).rstrip(".,;:)]}")
+    if not head:
+        return None
+    norm_tail = normalize_defanged(tail)
+    if norm_tail.endswith("-"):
+        # Hyphen break: only when the continuation is itself domain-like (has a dot)
+        if "." not in normalize_defanged(head):
+            return None
+    else:
+        # Dot break: require a dot earlier in the tail ("sub.evil.") or a defanged dot ("evil[.]"),
+        # so ordinary sentence ends ("...the actor.") are never joined.
+        if norm_tail.count(".") < 2 and tail == norm_tail:
+            return None
+    joined = tail + head
+    norm_joined = normalize_defanged(joined).lower().strip(".")
+    if not DOMAIN_PATTERN.fullmatch(joined) or not is_valid_domain(norm_joined):
+        return None
+    return joined, head
+
+
 def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
     """
     Deterministically extracts, normalizes, validates, and deduplicates IOCs from page text.
@@ -602,6 +652,8 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
 
         lines = raw_text.splitlines()
         prev_line = ""
+        # Continuation token at the start of a line that belongs to a domain wrapped from the previous line
+        wrapped_head: Optional[str] = None
 
         for idx, line in enumerate(lines):
             if not line.strip():
@@ -756,7 +808,37 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
             for u in line_urls_for_masking:
                 domain_search_line = domain_search_line.replace(u, " ")
 
+            skip_head = wrapped_head
+            wrapped_head = None
+
+            # 7a. Domain wrapped onto the next line (joined before the per-line pass)
+            wrap_tail_span = None
+            next_line = lines[idx + 1] if idx + 1 < len(lines) else ""
+            wrapped = find_wrapped_domain(domain_search_line, next_line)
+            if wrapped:
+                joined_raw, head = wrapped
+                tail_len = len(joined_raw) - len(head)
+                stripped = domain_search_line.rstrip()
+                wrap_tail_span = (len(stripped) - tail_len, len(stripped))
+                norm_domain = normalize_defanged(joined_raw).lower().strip(".")
+                wrapped_head = head
+                key = ("domain", norm_domain)
+                if key not in seen_iocs:
+                    seen_iocs.add(key)
+                    extracted_iocs.append({
+                        "type": "domain",
+                        "value": norm_domain,
+                        "source_page": page_num,
+                        "evidence": extract_evidence_snippet(f"{line.strip()} {next_line.strip()}", joined_raw),
+                    })
+
             for match in DOMAIN_PATTERN.finditer(domain_search_line):
+                # Skip the partial fragment that is the tail of a wrapped domain (handled in 7a)
+                if wrap_tail_span and match.end() > wrap_tail_span[0]:
+                    continue
+                # Skip the continuation fragment of a domain wrapped from the previous line
+                if skip_head and match.start() == len(domain_search_line) - len(domain_search_line.lstrip()):
+                    continue
                 raw_domain = match.group(0)
                 norm_domain = normalize_defanged(raw_domain).lower().strip(".")
                 if (
