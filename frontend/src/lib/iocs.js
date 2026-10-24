@@ -40,3 +40,39 @@ export function downloadFile(filename, content, mime) {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+// Defang an indicator for safe display/sharing (hxxps://evil[.]com/path, 1.2.3[.]4).
+// Hashes and CVEs are returned unchanged.
+export function defang(value, type) {
+  const v = String(value ?? '');
+  const t = (type || '').toLowerCase();
+  if (t === 'domain' || t === 'ipv4') return v.replace(/\./g, '[.]');
+  if (t === 'url') {
+    const m = v.match(/^([a-z][a-z0-9+.-]*):\/\/([^/?#]*)(.*)$/i);
+    if (!m) return v.replace(/\./g, '[.]');
+    const scheme = m[1].replace(/^http/i, (s) => (s === 'HTTP' ? 'HXXP' : 'hxxp'));
+    return `${scheme}://${m[2].replace(/\./g, '[.]')}${m[3]}`;
+  }
+  return v;
+}
+
+// Split an evidence snippet around the first case-insensitive occurrence of the indicator,
+// so the UI can highlight it. Returns [{ text, match }] segments.
+// When the report wrote the indicator defanged (hxxp, [.]), that form is matched instead.
+export function highlightSegments(evidence, value, type) {
+  const text = String(evidence ?? '');
+  const lower = text.toLowerCase();
+  let needle = String(value ?? '');
+  if (!needle) return [{ text, match: false }];
+  let idx = lower.indexOf(needle.toLowerCase());
+  if (idx === -1 && type) {
+    needle = defang(value, type);
+    idx = lower.indexOf(needle.toLowerCase());
+  }
+  if (idx === -1) return [{ text, match: false }];
+  return [
+    { text: text.slice(0, idx), match: false },
+    { text: text.slice(idx, idx + needle.length), match: true },
+    { text: text.slice(idx + needle.length), match: false },
+  ].filter((s) => s.text);
+}
