@@ -3,6 +3,7 @@ import UploadZone from './components/UploadZone';
 import IOCTable from './components/IOCTable';
 import { apiFetch } from './lib/api';
 import { DEFAULT_MAX_UPLOAD_MB } from './config';
+import { FileIcon, AlertIcon, RefreshIcon } from './components/Icons';
 
 const HEALTH_LABELS = {
   checking: 'Checking API…',
@@ -80,37 +81,35 @@ export default function App() {
               maxUploadMb={maxUploadMb}
             />
             {loadError && (
-              <div className="app-error" role="alert">
-                ⚠️ {loadError}
+              <div className="notice notice-error" role="alert">
+                <AlertIcon size={16} />
+                <span>{loadError}</span>
               </div>
             )}
           </>
         ) : (
           <div>
-            <div className="report-summary-bar">
-              <div className="report-meta-info">
-                <h2>{currentReport.fileName}</h2>
-                <div className="report-meta-details">
-                  {currentReport.pageCount != null && <span>📄 {currentReport.pageCount} Pages</span>}
-                  <span>🔍 {iocs.length} Extracted Indicators</span>
-                  {currentReport.createdAt && (
-                    <span>🕒 {new Date(currentReport.createdAt).toLocaleTimeString()}</span>
-                  )}
+            <div className="report-header">
+              <div className="report-file">
+                <span className="report-file-icon" aria-hidden="true">
+                  <FileIcon size={22} />
+                </span>
+                <div>
+                  <span className="panel-kicker">Report analyzed</span>
+                  <h2 className="report-name">{currentReport.fileName}</h2>
+                  <div className="report-meta">
+                    {currentReport.pageCount != null && <span>{currentReport.pageCount} pages</span>}
+                    <span>{iocs.length} indicators</span>
+                    {currentReport.createdAt && (
+                      <span>{new Date(currentReport.createdAt).toLocaleString()}</span>
+                    )}
+                    <span className="report-id">ID {String(currentReport.id).slice(0, 8)}</span>
+                  </div>
                 </div>
               </div>
-
-              <div className="report-actions">
-                <div className="summary-badges">
-                  {Object.entries(currentReport.summary).map(([type, count]) => (
-                    <span key={type} className="stat-pill">
-                      {type.toUpperCase()}: <strong>{count}</strong>
-                    </span>
-                  ))}
-                </div>
-                <button type="button" className="filter-btn nowrap" onClick={handleReset}>
-                  Analyze Another Report
-                </button>
-              </div>
+              <button type="button" className="btn btn-secondary nowrap" onClick={handleReset}>
+                <RefreshIcon size={15} /> Analyze another report
+              </button>
             </div>
 
             <IOCTable iocs={iocs} reportName={currentReport.fileName} />
