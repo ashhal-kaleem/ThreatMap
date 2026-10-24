@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
+import { apiFetch } from '../lib/api';
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const BYTES_PER_MB = 1024 * 1024;
 
-export default function UploadZone({ onUploadSuccess, isUploading, setIsUploading }) {
+export default function UploadZone({ onUploadSuccess, isUploading, setIsUploading, maxUploadMb }) {
   const [dragActive, setDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const fileInputRef = useRef(null);
@@ -10,20 +11,18 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
   const validateFile = (file) => {
     if (!file) return false;
 
-    // Check file extension
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setErrorMessage('Invalid file type: ThreatMap Lite accepts native text-based PDF reports only.');
       return false;
     }
-
-    // Check size <= 50MB
-    if (file.size > MAX_FILE_SIZE) {
-      setErrorMessage(`File exceeds 50MB limit (${(file.size / (1024 * 1024)).toFixed(1)}MB).`);
-      return false;
-    }
-
     if (file.size === 0) {
       setErrorMessage('Uploaded file is empty (0 bytes).');
+      return false;
+    }
+    if (file.size > maxUploadMb * BYTES_PER_MB) {
+      setErrorMessage(
+        `File exceeds ${maxUploadMb}MB limit (${(file.size / BYTES_PER_MB).toFixed(1)}MB).`,
+      );
       return false;
     }
 
@@ -41,26 +40,29 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
     formData.append('file', file);
 
     try {
-      const response = await fetch('/reports/upload', {
-        method: 'POST',
-        body: formData,
-      });
+      const data = await apiFetch('/reports/upload', { method: 'POST', body: formData });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.detail || `Server responded with status ${response.status}`);
+      // The backend returns 201 even when extraction fails; surface that as an error
+      if (data.status === 'failed') {
+        const statusInfo = await apiFetch(`/reports/${data.report_id}/status`).catch(() => null);
+        throw new Error(
+          (statusInfo && statusInfo.error_msg) ||
+            'The PDF was uploaded but text extraction failed. It may be scanned, encrypted, or corrupted.',
+        );
       }
 
-      const data = await response.json();
-      if (onUploadSuccess) {
-        onUploadSuccess(data.report_id, file.name);
-      }
+      if (onUploadSuccess) await onUploadSuccess(data.report_id, file.name);
     } catch (err) {
-      console.error('Upload error:', err);
       setErrorMessage(err.message || 'Failed to upload and analyze report.');
     } finally {
       setIsUploading(false);
+      // Allow selecting the same file again after an error
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const openPicker = () => {
+    if (!isUploading) fileInputRef.current?.click();
   };
 
   const onDragOver = (e) => {
@@ -80,36 +82,45 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
     e.stopPropagation();
     setDragActive(false);
     if (isUploading) return;
-
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   };
 
   const onFileChange = (e) => {
-    if (e.target.files && e.target.files[0]) {
-      handleFile(e.target.files[0]);
+    if (e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      openPicker();
     }
   };
 
   return (
     <div
       className={`upload-card ${dragActive ? 'drag-active' : ''} ${errorMessage ? 'error' : ''}`}
+      role="button"
+      tabIndex={isUploading ? -1 : 0}
+      aria-disabled={isUploading}
+      aria-busy={isUploading}
+      aria-label="Upload a threat report PDF"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
-      onClick={() => !isUploading && fileInputRef.current?.click()}
+      onClick={openPicker}
+      onKeyDown={onKeyDown}
     >
       <input
         type="file"
         ref={fileInputRef}
         onChange={onFileChange}
         accept=".pdf,application/pdf"
-        style={{ display: 'none' }}
+        className="visually-hidden"
+        tabIndex={-1}
         disabled={isUploading}
       />
 
-      <div className="upload-icon">
+      <div className="upload-icon" aria-hidden="true">
         {isUploading ? '⏳' : '📄'}
       </div>
 
@@ -117,17 +128,16 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
         {isUploading ? 'Processing & Extracting Indicators...' : 'Drop Threat Report PDF Here'}
       </h3>
 
-      <p className="upload-subtitle">
-        Native text-based PDFs only · Maximum 50MB · Subprocess PyMuPDF extraction
-      </p>
+      <p className="upload-subtitle">Native text-based PDFs only · Maximum {maxUploadMb}MB</p>
 
       <button
         type="button"
         className="upload-btn"
         disabled={isUploading}
+        tabIndex={-1}
         onClick={(e) => {
           e.stopPropagation();
-          fileInputRef.current?.click();
+          openPicker();
         }}
       >
         {isUploading ? (
@@ -140,7 +150,7 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
       </button>
 
       {errorMessage && (
-        <div className="upload-error-message">
+        <div className="upload-error-message" role="alert">
           ⚠️ {errorMessage}
         </div>
       )}

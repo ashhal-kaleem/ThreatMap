@@ -429,3 +429,55 @@ body {
   color: var(--text-secondary);
   font-size: 0.95rem;
 }
+
+/* IOC table pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+.pagination-info {
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+.pagination .filter-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Health status states --- */
+.status-dot.status-online { background-color: var(--color-green); }
+.status-dot.status-offline { background-color: var(--color-red); }
+.status-dot.status-checking { background-color: var(--color-yellow); }
+
+/* --- Layout helpers (replacing inline styles) --- */
+.report-actions { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.toolbar-right { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.nowrap { white-space: nowrap; }
+.col-type { width: 12%; }
+.col-value { width: 45%; }
+.col-page { width: 10%; }
+.col-evidence { width: 33%; }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+.upload-card:focus-visible,
+.filter-btn:focus-visible,
+.copy-btn:focus-visible {
+  outline: 2px solid var(--color-green);
+  outline-offset: 2px;
+}
+
+.copy-btn.copy-failed { color: var(--color-red); border-color: var(--color-red); }
+.filter-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.app-error {
+  margin-top: 1rem; padding: 0.75rem 1rem; border-radius: 8px;
+  border: 1px solid var(--color-red); color: var(--color-red);
+  background-color: rgba(248, 113, 113, 0.08);
+}

@@ -17,7 +17,31 @@ Responsibilities:
 
 import ipaddress
 import re
+from pathlib import Path
 from typing import TypedDict
+
+
+def _load_iana_tlds() -> frozenset[str]:
+    """Loads the IANA root zone TLD list (data/iana_tlds.txt), lowercased.
+
+    Source: https://data.iana.org/TLD/tlds-alpha-by-domain.txt
+    Refresh occasionally by re-downloading that file. If the file is missing,
+    an empty set is returned and TLD validation is skipped (legacy behaviour).
+    """
+    tld_file = Path(__file__).resolve().parent / "data" / "iana_tlds.txt"
+    try:
+        lines = tld_file.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return frozenset()
+    return frozenset(
+        line.strip().lower() for line in lines if line.strip() and not line.startswith("#")
+    )
+
+
+IANA_TLDS = _load_iana_tlds()
+
+# Special-use TLDs (RFC 7686) that are not in the IANA root zone but are real threat indicators
+SPECIAL_USE_TLDS = frozenset({"onion"})
 
 # Interface contract defined in phases.md
 class PageText(TypedDict):
@@ -43,11 +67,19 @@ PRIVATE_NETWORKS = [
     ipaddress.ip_network("169.254.0.0/16"),
     ipaddress.ip_network("224.0.0.0/4"),  # Multicast
     ipaddress.ip_network("240.0.0.0/4"),  # Reserved / Broadcast (includes 255.255.255.255)
+    # RFC 5737 documentation ranges (TEST-NET-1/2/3): used as placeholders in advisories
+    ipaddress.ip_network("192.0.2.0/24"),
+    ipaddress.ip_network("198.51.100.0/24"),
+    ipaddress.ip_network("203.0.113.0/24"),
+    # RFC 6598 carrier-grade NAT shared address space and RFC 2544 benchmarking range
+    ipaddress.ip_network("100.64.0.0/10"),
+    ipaddress.ip_network("198.18.0.0/15"),
 ]
 
 # Common file extensions and format suffixes that look like domain TLDs to avoid false positives
 FILE_EXTENSIONS = {
     # Documents & media
+    "md", "rst",  # Markdown / reStructuredText (e.g. README.md); .md (Moldova) is rare in threat intel
     "pdf", "doc", "docx", "xls", "xlsx", "ppt", "pptx", "csv", "tsv", "txt",
     "png", "jpg", "jpeg", "gif", "svg", "bmp", "ico",
     # Binaries, archives & drivers
@@ -63,6 +95,8 @@ FILE_EXTENSIONS = {
     "pem", "crt", "cer", "key", "pfx", "p12", "stix", "taxii", "hzn",
     # Reconnaissance target configs & proprietary event logs
     "evd", "production", "development", "project", "old", "prod", "local",
+    # Windows registry hive dumps (sam.hiv, system.hiv); .hiv is a valid but near-unused TLD
+    "hiv",
 }
 
 # Curated reference authorities, government CSIRTs, standard bodies, security research vendors,
@@ -71,7 +105,9 @@ REFERENCE_DOMAINS = {
     # US Government & Incident Response Authorities
     "cisa.gov", "cisa.dhs.gov", "us-cert.gov", "fbi.gov", "nsa.gov",
     "defense.gov", "justice.gov", "dni.gov", "energy.gov", "treasury.gov",
-    "stopransomware.gov",
+    "stopransomware.gov", "ic3.gov", "dhs.gov", "uscg.mil",
+    # Information-sharing bodies and reward/reporting programmes
+    "cisecurity.org", "rewardsforjustice.net",
     # International Cybersecurity Agencies
     "cyber.gov.au", "cyber.gc.ca", "ncsc.gov.uk", "ncsc.govt.nz",
     "cert.ssi.gouv.fr", "ssi.gouv.fr", "cyber.gouv.fr", "anssi.gouv.fr",
@@ -100,6 +136,26 @@ REFERENCE_DOMAINS = {
 PLATFORM_HOSTING_DOMAINS = {
     "github.com", "raw.githubusercontent.com", "pastebin.com", "gitlab.com",
     "bitbucket.org", "discord.com", "telegram.org", "surge.sh",
+    # Public file-sharing / cloud storage commonly abused for exfiltration (apex is not adversary infra)
+    "mega.nz", "mega.io", "dropbox.com", "drive.google.com", "onedrive.live.com", "transfer.sh",
+    "anonfiles.com", "ufile.io", "sendspace.com", "catbox.moe", "file.io", "wetransfer.com",
+    # Internet scanning services referenced as reconnaissance tooling
+    "shodan.io", "censys.io",
+}
+
+# Services where only the apex is benign: subdomains are per-user and can be adversary
+# infrastructure (e.g. 149.248.35.200.sslip.io, <random>.ngrok.io), so only the bare apex is filtered.
+APEX_ONLY_SERVICE_DOMAINS = {
+    "sslip.io", "nip.io", "ngrok.io", "ngrok.com", "ngrok-free.app", "trycloudflare.com",
+}
+
+# Public email providers: the provider domain of an adversary email address
+# (e.g. karakurtlair@gmail.com) is not itself an IOC.
+PUBLIC_EMAIL_PROVIDERS = {
+    "gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "live.com", "yahoo.com",
+    "protonmail.com", "proton.me", "pm.me", "tutanota.com", "tuta.io", "mail.ru",
+    "yandex.ru", "yandex.com", "aol.com", "icloud.com", "gmx.com", "gmx.net", "zoho.com",
+    "onionmail.org", "cock.li", "rambler.ru", "inbox.ru", "bk.ru", "list.ru",
 }
 
 # Detection prefix pattern for antivirus engine signatures
@@ -172,12 +228,12 @@ def is_reference_domain(domain_str: str) -> bool:
     security vendors, documentation examples, or platform hosting providers.
     """
     d = domain_str.lower().strip(".")
-    if d in REFERENCE_DOMAINS or d in PLATFORM_HOSTING_DOMAINS:
+    if d in REFERENCE_DOMAINS or d in PLATFORM_HOSTING_DOMAINS or d in PUBLIC_EMAIL_PROVIDERS:
         return True
     parts = d.split(".")
     for i in range(1, len(parts) - 1):
         parent = ".".join(parts[i:])
-        if parent in REFERENCE_DOMAINS or parent in PLATFORM_HOSTING_DOMAINS:
+        if parent in REFERENCE_DOMAINS or parent in PLATFORM_HOSTING_DOMAINS or parent in PUBLIC_EMAIL_PROVIDERS:
             return True
     return False
 
@@ -322,6 +378,19 @@ def is_version_or_ua_ip(match_span: tuple[int, int], line: str, prev_line: str =
     return False
 
 
+def is_network_range_ip(match_span: tuple[int, int], line: str) -> bool:
+    """
+    Detects an IPv4 match that is a network block from WHOIS/RDAP output or CIDR notation
+    (e.g. 'inetnum: 179.60.147.0/24', 'NetRange: 108.62.0.0 - 108.62.255.255'), not a host IOC.
+    """
+    start, end = match_span
+    if re.match(r"/\d{1,2}\b", line[end:]):
+        return True
+    if re.search(r"\b(?:inetnum|inet6num|netrange|cidr|route|inetnum-up)\s*:", line[:start], re.IGNORECASE):
+        return True
+    return False
+
+
 def is_av_signature(match_span: tuple[int, int], line: str) -> bool:
     """
     Detects if a domain match is part of an antivirus threat detection signature
@@ -371,11 +440,17 @@ def is_email_local_part(match_span: tuple[int, int], line: str) -> bool:
 def normalize_cve(raw_cve: str) -> str:
     """
     Standardizes CVE format and resolves footnote corruption (e.g. CVE-2024-938038 -> CVE-2024-9380).
+
+    Genuine 7-digit identifiers from the 1,000,000+ block (e.g. CVE-2017-1000117,
+    assigned by the DWF numbering authority) are preserved unchanged.
     """
     cve = raw_cve.upper().replace("_", "-")
     parts = cve.split("-")
     if len(parts) == 3:
         prefix, year, seq = parts
+        # Preserve genuine 7-digit IDs in the 1000000-1999999 block
+        if len(seq) == 7 and seq.startswith("1"):
+            return cve
         # If sequence number has 6 or 7 digits and exceeds realistic annual allocations (> 60000)
         if len(seq) >= 6 and int(seq) > 60000:
             # Check if stripping last 2 digits yields a realistic CVE sequence
@@ -415,6 +490,10 @@ def is_valid_domain(domain_str: str) -> bool:
     if not tld.isalpha() or len(tld) < 2 or tld in FILE_EXTENSIONS or tld == "cve":
         return False
 
+    # TLD must exist in the IANA root zone (rejects code like window.location, process.exit)
+    if IANA_TLDS and tld not in IANA_TLDS and tld not in SPECIAL_USE_TLDS and not tld.startswith("xn--"):
+        return False
+
     # Discard script or binary file extensions occurring in middle labels (e.g. eval-stdin.php.dev)
     if any(l in ("php", "asp", "aspx", "jsp", "jspx", "cgi", "exe", "dll") for l in labels[:-1]):
         return False
@@ -433,6 +512,10 @@ def is_valid_domain(domain_str: str) -> bool:
 
     # Discard reference authorities & documentation placeholders
     if is_reference_domain(domain):
+        return False
+
+    # Discard the bare apex of per-user subdomain services (subdomains stay valid)
+    if domain in APEX_ONLY_SERVICE_DOMAINS:
         return False
 
     # Validate each label
@@ -652,7 +735,11 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]:
             # 6. Extract IPv4 addresses (excluding version numbers and User-Agent strings)
             for match in IPV4_PATTERN.finditer(normalized_line):
                 ip_val = match.group(0)
-                if is_valid_ipv4(ip_val) and not is_version_or_ua_ip(match.span(), normalized_line, prev_line):
+                if (
+                    is_valid_ipv4(ip_val)
+                    and not is_version_or_ua_ip(match.span(), normalized_line, prev_line)
+                    and not is_network_range_ip(match.span(), normalized_line)
+                ):
                     key = ("ipv4", ip_val)
                     if key not in seen_iocs:
                         seen_iocs.add(key)

@@ -354,3 +354,32 @@ def extract_iocs(pages: list[PageText]) -> list[ExtractedIOC]: ...
 1. **Response Envelope vs. Flat List**: Does Aqsa prefer a flat array (`list[ExtractedIOC]`) as in `architecture.md` line 292, or a wrapped envelope (`{ "report_id": "...", "total": int, "iocs": [...] }`)?
 2. **Deduplication Persistence**: `extract_iocs()` deduplicates within a run, storing the earliest page. Should DB insertion use a composite unique constraint `(report_id, ioc_type, ioc_value)`?
 3. **Endpoint Placement**: Since Aqsa owns FastAPI initialization and routers, will Aqsa register an `ioc_router` inside `backend/app/routers/` that calls an endpoint function provided by the IOC service, or will Aqsa implement the router directly using `ioc_service.py`?
+
+## Held-out evaluation (12 reports)
+
+`eval/heldout_review.csv` holds 1,028 candidates from 12 CISA/NCSC advisories that were **not** used to tune the extractor:
+AA21-209A, AA22-011A, AA22-117A, AA22-138B, AA22-174A, AA22-257A, AA22-321A, AA23-250A, AA23-319A, AA24-241A, MAR-10430311, NCSC SVR TTPs 2021.
+
+**Labelling method:** AI-assisted. Each row has `true_ioc` / `not_ioc` / `uncertain`, a written reason in `human_notes` (prefixed `[AI-labelled, not human-verified]`) and verbatim evidence. `reviewed_by` records the provenance. Ambiguous cases (abused third-party services, parent domains) are `uncertain` and excluded from metrics.
+
+Reproduce:
+
+```bash
+python -m eval.evaluate_annotations --review-queue eval/heldout_review.csv --pdf-dir eval/raw_reports
+```
+
+| Type | Support | TP | Confirmed FP | Uncertain | FN | Precision | Recall | F1 |
+|---|---|---|---|---|---|---|---|---|
+| cve | 134 | 134 | 0 | 0 | 0 | 1.000 | 1.000 | 1.000 |
+| domain | 21 | 21 | 16 | 9 | 0 | 0.568 | 1.000 | 0.724 |
+| ipv4 | 108 | 108 | 2 | 0 | 0 | 0.982 | 1.000 | 0.991 |
+| md5 | 25 | 25 | 0 | 0 | 0 | 1.000 | 1.000 | 1.000 |
+| sha1 | 12 | 12 | 0 | 0 | 0 | 1.000 | 1.000 | 1.000 |
+| sha256 | 42 | 42 | 0 | 0 | 0 | 1.000 | 1.000 | 1.000 |
+| url | 5 | 5 | 3 | 4 | 0 | 0.625 | 1.000 | 0.769 |
+| **Micro** | **347** | **347** | **21** | **13** | **0** | **0.943** | **1.000** | **0.971** |
+
+Recall is measured within the candidate pool (closed world). Main error source: legitimate public services (ngrok, anonfiles, sendspace, catbox, rambler.ru), reporting-contact domains, and registry hive file names (`sam.hiv`) extracted as domains.
+
+**Post-evaluation fix:** after the results above were recorded, filters were added for the false-positive classes they revealed. Re-running gives micro P 0.991 / F1 0.996 (domain P 0.955, URL P 0.714). That number is optimistic because the rules were chosen with these labels in view. Quote the table above as the held-out result.
+

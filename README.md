@@ -105,7 +105,7 @@ pip install -r backend/requirements.txt
 ```bash
 python -m pytest -v
 ```
-All 73 unit, integration, and E2E tests should pass.
+All backend unit, integration, and E2E tests should pass (97 at the time of writing).
 
 ### Step 4: Run FastAPI Backend Server
 ```bash
@@ -122,6 +122,25 @@ npm install
 npm run dev
 ```
 Open `http://localhost:5173` in your browser. The Vite development server automatically proxies `/reports` and `/health` requests to `http://127.0.0.1:8000`.
+
+Frontend configuration lives in `frontend/.env` (copy `frontend/.env.example`):
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `VITE_API_BASE_URL` | API URL for deployed builds; empty = use the dev proxy | *(empty)* |
+| `VITE_DEV_PROXY_TARGET` | Backend the dev server proxies to | `http://127.0.0.1:8000` |
+| `VITE_DEV_PORT` | Dev server port | `5173` |
+| `VITE_MAX_UPLOAD_MB` | Fallback upload limit until `/health` reports the server's | `50` |
+| `VITE_IOC_PAGE_SIZE` | IOC table rows per page | `25` |
+
+The backend's upload limit and allowed CORS origins come from `backend/.env` (`MAX_UPLOAD_SIZE_MB`, `CORS_ORIGINS`). `/health` returns `max_upload_mb`, so the UI always shows and enforces the same limit as the server.
+
+Frontend quality checks:
+```bash
+cd frontend
+npm run lint   # ESLint
+npm test       # Vitest component + helper tests
+```
 
 ---
 
@@ -176,6 +195,17 @@ The `ioc_service.py` module applies deterministic regular expressions and post-e
 4. **Scanned & Image-Only PDFs:**
    - ThreatMap Lite processes native text-based PDFs via PyMuPDF. Scanned PDFs without OCR text layers raise a structured `ValueError: Document contains no extractable text`.
 
+5. **Abused Public Services (file sharing, tunnelling, scanning, email):**
+   - Reports often name services the actors abused, e.g. `ufile[.]io`, `sendspace[.]com`, `ngrok[.]io`, `Shodan[.]io`, `rambler[.]ru`. The service apex is not adversary infrastructure.
+   - *Behavior:* Known services are filtered via `PLATFORM_HOSTING_DOMAINS` / `PUBLIC_EMAIL_PROVIDERS`. Per-user subdomain services (`sslip.io`, `ngrok.io`) filter **only the bare apex**, so `149.248.35.200.sslip.io` and `<random>.ngrok.io` are still extracted.
+   - *Limitation:* The lists are curated, so an unlisted service will still be extracted. Bare service URLs such as `https://ufile[.]io` in an exfiltration list remain false positives.
+6. **Registry Hive and Other File Names That Use Real TLDs:**
+   - `sam.hiv`, `system.hiv` are Windows registry dumps, but `.hiv` is a real TLD. `.hiv` is treated as a file extension. Other real-TLD collisions (e.g. `.zip`, `.mov`) depend on the extension list.
+7. **WHOIS / RDAP Network Ranges:**
+   - Network blocks in WHOIS output (`inetnum: 179.60.147.0/24`) are excluded via CIDR / `inetnum` / `NetRange` context; host IPs on the same line format are kept.
+8. **Closed-World Recall:**
+   - Recall is computed only over the reviewed candidate pool (production extractor + permissive regex + manual inspection). Indicators that no pass surfaced (e.g. a domain broken by an odd defang like `forticloud.[]online`) are not counted as false negatives.
+
 ---
 
 ## 7. Ground-Truth Evaluation Workflow
@@ -194,3 +224,29 @@ python eval/ioc_eval.py
 - **Candidate Recall vs. Complete Document Recall:** Candidate-level recall ($1.0000$ or $100.0\%$) applies **strictly to the current reviewed candidate pool** ($FN = 0$ of 59 reviewed true IOCs). It does **not** represent complete, open-world document-level IOC recall across unannotated sections of the PDF reports.
 - **Definition of 119 Document-Level Unique Indicators:** The queue contains **139 total annotation rows**, representing **119 document-level unique indicators** deduplicated by `(report_filename, ioc_type, normalized_value)` (59 true IOCs, 57 negative controls, 3 uncertain candidates).
 - **Candidate-Level Category Accounting & Uncertain Reserves:** In the candidate-level category evaluation table, $\text{Doc Extracted} = \text{TP} + \text{Confirmed FP} + \text{Uncertain}$. Extracted predictions may not equal $\text{TP} + \text{Confirmed FP}$ because neutral uncertain predictions (specifically the 2 dual-use GitHub repositories: `https://github.com/alexantr/filemanager` and `https://github.com/prasathmani/tinyfilemanager`) are extracted by the engine from the document text but remain held in a neutral reserve and explicitly excluded from Confirmed FP counts in both candidate-level and open-world reporting.
+
+### Final IOC Evaluation Table (held-out set, 12 reports)
+
+A held-out set of 12 CISA/NCSC advisories (1,028 candidates, `eval/heldout_review.csv`) was labelled **with AI assistance** (provenance recorded in `reviewed_by` and `human_notes`) and was **not** used to tune the extractor before the first evaluation. Ambiguous candidates are kept in an `uncertain` reserve and excluded from the metrics.
+
+```bash
+python -m eval.evaluate_annotations --review-queue eval/heldout_review.csv --pdf-dir eval/raw_reports
+```
+
+| Type | Support | Precision (held-out, before fix) | F1 (before fix) | Precision (after fix) | F1 (after fix) |
+|---|---|---|---|---|---|
+| CVE | 134 | 1.000 | 1.000 | 1.000 | 1.000 |
+| Domain | 21 | 0.568 | 0.724 | 0.955 | 0.977 |
+| IPv4 | 108 | 0.982 | 0.991 | 1.000 | 1.000 |
+| MD5 | 25 | 1.000 | 1.000 | 1.000 | 1.000 |
+| SHA1 | 12 | 1.000 | 1.000 | 1.000 | 1.000 |
+| SHA256 | 42 | 1.000 | 1.000 | 1.000 | 1.000 |
+| URL | 5 | 0.625 | 0.769 | 0.714 | 0.833 |
+| **Micro avg** | **347** | **0.943** | **0.971** | **0.991** | **0.996** |
+
+Recall is 1.000 in every column (closed world, see Limitation 8).
+
+- **The "before fix" column is the true held-out result** and is the number to quote for generalisation.
+- The "after fix" column comes from filtering the false-positive classes found on this set (abused public services, reporting-contact domains, registry hive files, WHOIS ranges; see Limitations 5–7). Because those rules were chosen after seeing these labels, it is **optimistic** and only shows that the fix works, not how well the extractor generalises.
+- Original 3-report tuning set after the fix: micro P/R/F1 = 1.000 / 1.000 / 1.000 (no regression).
+

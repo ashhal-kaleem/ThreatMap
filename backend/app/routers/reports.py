@@ -23,7 +23,9 @@ from backend.app.services.pdf_service import (
     extract_pages,
     save_upload_file,
     validate_pdf_bytes,
+    MAX_FILE_SIZE_BYTES,
 )
+from backend.app.config import MAX_UPLOAD_SIZE_MB
 from backend.app.services.ioc_service import extract_iocs
 
 logger = logging.getLogger(__name__)
@@ -94,8 +96,25 @@ async def upload_report(
     Validates magic bytes (%PDF-) and file size (<= 50MB).
     Saves file, stores report record, and executes extraction pipeline.
     """
+    # Read in 1 MB chunks and stop as soon as the 50MB limit is exceeded,
+    # so oversized uploads are never fully loaded into memory.
     try:
-        content = await file.read()
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_FILE_SIZE_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File exceeds the maximum allowed limit of {MAX_UPLOAD_SIZE_MB}MB.",
+                )
+            chunks.append(chunk)
+        content = b"".join(chunks)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

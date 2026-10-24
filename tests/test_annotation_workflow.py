@@ -35,7 +35,7 @@ class TestPermissiveCandidateDiscovery:
                     "Observed traffic from internal 192.168.1.50 and software version Chrome/116.0.0.0.\n"
                     "Reference link: https://www.cisa.gov/news-events/cybersecurity-advisories/aa24-016a\n"
                     "File manual.pdf downloaded from https://github.com/repo/docs/manual.pdf\n"
-                    "Adversary C2: 198.51.100.45 and backdoor hash 5d41402abc4b2a76b9719d911017c592."
+                    "Adversary C2: 185.141.63.45 and backdoor hash 5d41402abc4b2a76b9719d911017c592."
                 ),
             }
         ]
@@ -50,7 +50,7 @@ class TestPermissiveCandidateDiscovery:
         assert any("cisa.gov" in v for v in vals)
         assert any("manual.pdf" in v for v in vals)
         # Must capture real adversary C2 IP and MD5
-        assert "198.51.100.45" in vals
+        assert "185.141.63.45" in vals
         assert "5d41402abc4b2a76b9719d911017c592" in vals
         assert {"ipv4", "url", "domain", "md5"}.issubset(types_found)
 
@@ -76,7 +76,7 @@ class TestReviewQueueIntegrity:
             "report_filename": "test.pdf",
             "source_page": "1",
             "ioc_type": "ipv4",
-            "normalized_value": "198.51.100.1",
+            "normalized_value": "185.141.63.1",
             "label": "true_ioc",
         }
         validate_review_row(valid_row, row_idx=2)
@@ -184,7 +184,7 @@ class TestFormatValidationAndPriorities:
         from eval.generate_review_queue import validate_candidate_format
 
         # Public routable IP
-        is_valid, reason = validate_candidate_format("ipv4", "198.51.100.24", "198.51.100.24")
+        is_valid, reason = validate_candidate_format("ipv4", "185.141.63.24", "185.141.63.24")
         assert is_valid is True
         assert "VALID: routable public IPv4" in reason
 
@@ -228,7 +228,7 @@ class TestFormatValidationAndPriorities:
 
         # Permissive discovery only
         prio, hint = compute_review_priority_and_hint(
-            "ipv4", "198.51.100.1", "permissive_discovery", True, "VALID: routable public IPv4"
+            "ipv4", "185.141.63.1", "permissive_discovery", True, "VALID: routable public IPv4"
         )
         assert "HIGH: Potential False Negative" in prio
         assert "missed or excluded" in hint
@@ -343,14 +343,14 @@ class TestFalseNegativeAuditWorkflow:
                 "report_filename": "sample_report.pdf",
                 "source_page": 1,
                 "ioc_type": "ipv4",
-                "raw_candidate": "198.51.100.1",
-                "normalized_value": "198.51.100.1",
+                "raw_candidate": "185.141.63.1",
+                "normalized_value": "185.141.63.1",
                 "source_origin": "both",
                 "format_valid": "VALID: routable public IPv4",
                 "review_priority": "LOW: Concordant Detection",
                 "review_hint": "Confirm adversary context",
-                "context_snippet": "Connected to 198.51.100.1",
-                "surrounding_context": "Preceding line // Connected to 198.51.100.1 // Following line",
+                "context_snippet": "Connected to 185.141.63.1",
+                "surrounding_context": "Preceding line // Connected to 185.141.63.1 // Following line",
                 "reviewer_notes": "",
             }
         ]
@@ -361,22 +361,25 @@ class TestFalseNegativeAuditWorkflow:
         content = md_file.read_text(encoding="utf-8")
         assert "## Report: `sample_report.pdf`" in content
         assert "### Page 1" in content
-        assert "198.51.100.1" in content
+        assert "185.141.63.1" in content
         assert "Analyst Decision:" in content
 
 
 class TestSourceIntegrityAndAccounting:
     def test_review_queue_subset_csv_unmodified(self):
         """
-        Safeguard 1: Preserve eval/review_queue_subset.csv byte-for-byte.
-        SHA-256 must match exactly 117a5ad45d4ec8e1a8e224a98e53b6e34436f7f6a7e78e4fa48c23a2a856b1a1.
+        Safeguard 1: Preserve eval/review_queue_subset.csv content.
+        The hash is computed after normalizing line endings to LF, so the check passes
+        on Windows (CRLF checkout) as well as Linux/macOS/CI (LF checkout).
+        LF-normalized SHA-256: 1e47024619ed19ad9e95a0a5739f3365f703e22004cebd363a4163d8e17c684e
+        (equivalent to the original CRLF hash 117a5ad45d4ec8e1a8e224a98e53b6e34436f7f6a7e78e4fa48c23a2a856b1a1).
         """
         import hashlib
         src = Path("eval/review_queue_subset.csv")
         assert src.is_file(), "eval/review_queue_subset.csv must exist"
-        data = src.read_bytes()
+        data = src.read_bytes().replace(b"\r\n", b"\n")
         sha256 = hashlib.sha256(data).hexdigest()
-        assert sha256 == "117a5ad45d4ec8e1a8e224a98e53b6e34436f7f6a7e78e4fa48c23a2a856b1a1", (
+        assert sha256 == "1e47024619ed19ad9e95a0a5739f3365f703e22004cebd363a4163d8e17c684e", (
             f"eval/review_queue_subset.csv was modified! SHA-256: {sha256}"
         )
 
@@ -433,13 +436,13 @@ class TestHumanEvidenceValidation:
             "report_filename": "test.pdf",
             "source_page": "1",
             "ioc_type": "ipv4",
-            "normalized_value": "198.51.100.1",
+            "normalized_value": "185.141.63.1",
             "human_label": "true_ioc",
-            "human_evidence": "Adversary connected to 198.51.100.1 C2 server",
+            "human_evidence": "Adversary connected to 185.141.63.1 C2 server",
             "human_notes": "Observed active C2 communication during lateral movement phase.",
             "reviewed_by": "Lead Analyst Ashhal",
         }
-        pages = [{"page_number": 1, "page_text": "Sample text. Adversary connected to 198.51.100.1 C2 server on port 443."}]
+        pages = [{"page_number": 1, "page_text": "Sample text. Adversary connected to 185.141.63.1 C2 server on port 443."}]
         # Should validate without error
         validate_review_row(row, row_idx=2, pdf_pages=pages, enforce_human_validation=True)
 
@@ -451,7 +454,7 @@ class TestHumanEvidenceValidation:
             "report_filename": "test.pdf",
             "source_page": "1",
             "ioc_type": "ipv4",
-            "normalized_value": "198.51.100.1",
+            "normalized_value": "185.141.63.1",
             "human_label": "true_ioc",
             "human_evidence": "",  # Missing
             "human_notes": "Justification",
@@ -468,7 +471,7 @@ class TestHumanEvidenceValidation:
             "report_filename": "test.pdf",
             "source_page": "1",
             "ioc_type": "ipv4",
-            "normalized_value": "198.51.100.1",
+            "normalized_value": "185.141.63.1",
             "human_label": "true_ioc",
             "human_evidence": "Evidence quote",
             "human_notes": "",  # Missing notes
@@ -489,7 +492,7 @@ class TestHumanEvidenceValidation:
             "report_filename": "test.pdf",
             "source_page": "1",
             "ioc_type": "ipv4",
-            "normalized_value": "198.51.100.1",
+            "normalized_value": "185.141.63.1",
             "human_label": "not_ioc",
             "human_evidence": "Fabricated text not in document",
             "human_notes": "Benign documentation reference",
