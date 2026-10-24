@@ -8,7 +8,7 @@
 
 ## 1. Overview
 
-The IOC Evaluation Framework provides deterministic, reproducible evaluation of ThreatMap Lite's regex-based Indicator of Compromise (IOC) extractor against human-annotated ground-truth threat intelligence reports.
+The IOC Evaluation Framework provides deterministic, reproducible evaluation of ThreatMap Lite's regex-based Indicator of Compromise (IOC) extractor against annotated threat intelligence reports: a 139-row tuning set reviewed by a human (Ashhal) and a 1,028-row held-out set labelled with AI assistance and **not** human-verified (see "Held-out evaluation" below).
 
 ### Supported IOC Categories
 

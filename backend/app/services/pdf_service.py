@@ -11,6 +11,7 @@ Responsibilities:
 """
 
 import json
+import logging
 import os
 import re
 import subprocess
@@ -22,6 +23,8 @@ from typing import Optional, TypedDict
 from backend.app.config import MAX_UPLOAD_SIZE_MB
 
 # Global Configuration
+logger = logging.getLogger(__name__)
+
 MAGIC_BYTES = b"%PDF-"
 MAX_FILE_SIZE_BYTES = MAX_UPLOAD_SIZE_MB * 1024 * 1024
 DEFAULT_TIMEOUT_SECONDS = 120
@@ -225,5 +228,16 @@ def extract_pages(
     pages = result.get("pages", [])
     if not pages:
         raise ValueError("PDF contains no extractable pages.")
+
+    failed_pages = result.get("failed_pages") or []
+    if failed_pages:
+        logger.warning(
+            "PyMuPDF could not read %d page(s) of %s; they were stored as empty text: %s",
+            len(failed_pages), validated_path.name, failed_pages,
+        )
+
+    # The worker sends page_text once; add the backward-compatible `text` alias here
+    for page in pages:
+        page["text"] = page["page_text"]
 
     return pages
