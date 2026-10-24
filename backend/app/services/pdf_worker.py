@@ -82,18 +82,20 @@ def process_pdf(pdf_path_str: str) -> dict:
 
         pages = []
         total_extracted_text = []
+        failed_pages = []
 
         for page_num in range(page_count):
             try:
                 page = doc.load_page(page_num)
                 page_text = page.get_text("text") or ""
             except Exception:
+                # Keep page numbering intact, but report the failure instead of hiding it
                 page_text = ""
+                failed_pages.append(page_num + 1)
 
             pages.append({
                 "page_number": page_num + 1,
                 "page_text": page_text,
-                "text": page_text,
             })
             total_extracted_text.append(page_text.strip())
 
@@ -109,6 +111,7 @@ def process_pdf(pdf_path_str: str) -> dict:
             "status": "success",
             "page_count": page_count,
             "pages": pages,
+            "failed_pages": failed_pages,
         }
 
     except Exception as e:
