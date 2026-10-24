@@ -1,11 +1,15 @@
 import { useState, useRef } from 'react';
 import { apiFetch } from '../lib/api';
+import { UploadIcon, FileIcon, AlertIcon } from './Icons';
 
 const BYTES_PER_MB = 1024 * 1024;
+
+const DETECTS = ['IPv4', 'Domain', 'URL', 'MD5', 'SHA1', 'SHA256', 'CVE'];
 
 export default function UploadZone({ onUploadSuccess, isUploading, setIsUploading, maxUploadMb }) {
   const [dragActive, setDragActive] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [activeFile, setActiveFile] = useState(null);
   const fileInputRef = useRef(null);
 
   const validateFile = (file) => {
@@ -35,6 +39,7 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
 
     setIsUploading(true);
     setErrorMessage(null);
+    setActiveFile({ name: file.name, size: file.size });
 
     const formData = new FormData();
     formData.append('file', file);
@@ -56,6 +61,7 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
       setErrorMessage(err.message || 'Failed to upload and analyze report.');
     } finally {
       setIsUploading(false);
+      setActiveFile(null);
       // Allow selecting the same file again after an error
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -97,63 +103,104 @@ export default function UploadZone({ onUploadSuccess, isUploading, setIsUploadin
   };
 
   return (
-    <div
-      className={`upload-card ${dragActive ? 'drag-active' : ''} ${errorMessage ? 'error' : ''}`}
-      role="button"
-      tabIndex={isUploading ? -1 : 0}
-      aria-disabled={isUploading}
-      aria-busy={isUploading}
-      aria-label="Upload a threat report PDF"
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
-      onClick={openPicker}
-      onKeyDown={onKeyDown}
-    >
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={onFileChange}
-        accept=".pdf,application/pdf"
-        className="visually-hidden"
-        tabIndex={-1}
-        disabled={isUploading}
-      />
-
-      <div className="upload-icon" aria-hidden="true">
-        {isUploading ? '⏳' : '📄'}
+    <section className="upload-panel" aria-labelledby="upload-heading">
+      <div className="panel-head">
+        <span className="panel-kicker">Ingest</span>
+        <h2 id="upload-heading" className="panel-title">
+          Analyze a threat report
+        </h2>
+        <p className="panel-desc">
+          Upload a CTI report PDF. Indicators are extracted page by page, refanged, normalized and
+          deduplicated, each with the page and sentence it came from.
+        </p>
       </div>
 
-      <h3 className="upload-title">
-        {isUploading ? 'Processing & Extracting Indicators...' : 'Drop Threat Report PDF Here'}
-      </h3>
-
-      <p className="upload-subtitle">Native text-based PDFs only · Maximum {maxUploadMb}MB</p>
-
-      <button
-        type="button"
-        className="upload-btn"
-        disabled={isUploading}
-        tabIndex={-1}
-        onClick={(e) => {
-          e.stopPropagation();
-          openPicker();
-        }}
+      <div
+        className={`upload-card ${dragActive ? 'drag-active' : ''} ${errorMessage ? 'error' : ''} ${
+          isUploading ? 'busy' : ''
+        }`}
+        role="button"
+        tabIndex={isUploading ? -1 : 0}
+        aria-disabled={isUploading}
+        aria-busy={isUploading}
+        aria-label="Upload a threat report PDF"
+        onDragOver={onDragOver}
+        onDragLeave={onDragLeave}
+        onDrop={onDrop}
+        onClick={openPicker}
+        onKeyDown={onKeyDown}
       >
+        <input
+          type="file"
+          ref={fileInputRef}
+          onChange={onFileChange}
+          accept=".pdf,application/pdf"
+          className="visually-hidden"
+          tabIndex={-1}
+          disabled={isUploading}
+        />
+        <span className="corner tl" aria-hidden="true" />
+        <span className="corner tr" aria-hidden="true" />
+        <span className="corner bl" aria-hidden="true" />
+        <span className="corner br" aria-hidden="true" />
+
         {isUploading ? (
-          <>
-            <span className="spinner" /> Analyzing Document...
-          </>
+          <div className="scan-state">
+            <div className="scan-doc" aria-hidden="true">
+              <FileIcon size={40} />
+              <span className="scan-line" />
+            </div>
+            <p className="upload-title">Extracting indicators…</p>
+            {activeFile && (
+              <p className="scan-file">
+                {activeFile.name} · {(activeFile.size / BYTES_PER_MB).toFixed(1)} MB
+              </p>
+            )}
+            <div className="progress-track" aria-hidden="true">
+              <span className="progress-bar" />
+            </div>
+            <p className="upload-subtitle">Large reports can take a few seconds.</p>
+          </div>
         ) : (
-          'Browse Computer'
+          <>
+            <div className="upload-icon" aria-hidden="true">
+              <UploadIcon size={28} />
+            </div>
+            <p className="upload-title">
+              {dragActive ? 'Release to upload' : 'Drop a PDF here, or browse'}
+            </p>
+            <p className="upload-subtitle">Text-based PDFs · up to {maxUploadMb} MB</p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              tabIndex={-1}
+              onClick={(e) => {
+                e.stopPropagation();
+                openPicker();
+              }}
+            >
+              <FileIcon size={16} /> Choose file
+            </button>
+          </>
         )}
-      </button>
+      </div>
 
       {errorMessage && (
-        <div className="upload-error-message" role="alert">
-          ⚠️ {errorMessage}
+        <div className="notice notice-error" role="alert">
+          <AlertIcon size={16} />
+          <span>{errorMessage}</span>
         </div>
       )}
-    </div>
+
+      <div className="detects" aria-label="Indicator types detected">
+        <span className="detects-label">Detects</span>
+        {DETECTS.map((d) => (
+          <span key={d} className="detect-chip">
+            {d}
+          </span>
+        ))}
+        <span className="detect-chip detect-note">Defanged forms (hxxp, [.])</span>
+      </div>
+    </section>
   );
 }
