@@ -666,3 +666,43 @@ def test_heldout_fp_classes_filtered_but_subdomains_kept():
     assert "149.248.35.200.sslip.io" in domains
     assert "179.60.147.0" not in ips
     assert "179.60.147.4" in ips
+
+
+def _extract(text: str) -> list:
+    return extract_iocs([{"page_number": 1, "page_text": text, "text": text}])
+
+
+def test_domain_wrapped_across_lines_is_rejoined():
+    cases = {
+        "Infra: update.evil-\ncdn.com was used": "update.evil-cdn.com",
+        "C2 evil[.]\ncom observed": "evil.com",
+        "seen at sub.bad.\nnet today": "sub.bad.net",
+    }
+    for text, expected in cases.items():
+        domains = [i["value"] for i in _extract(text) if i["type"] == "domain"]
+        assert domains == [expected], (text, domains)
+
+
+def test_wrapped_domain_fragments_not_reported():
+    domains = {i["value"] for i in _extract("good-\ndomain.org and other.com") if i["type"] == "domain"}
+    assert domains == {"good-domain.org", "other.com"}
+
+
+def test_sentence_end_and_word_hyphenation_not_joined():
+    assert _extract("We saw the actor.\nThe next step") == []
+    assert _extract("multi-\nple stages") == []
+
+
+def test_bare_platform_service_root_url_not_extracted():
+    iocs = _extract(
+        "Exfiltration by the malware to hxxps://www.sendspace[.]com and hxxps://ufile[.]io\n"
+        "Payload dropped from hxxps://ufile[.]io/abc123 by the malware\n"
+    )
+    urls = {i["value"] for i in iocs if i["type"] == "url"}
+    assert urls == {"https://ufile.io/abc123"}
+
+
+def test_slip_io_apex_filtered_but_subdomain_kept():
+    domains = {i["value"] for i in _extract("Used slip[.]io and 1-2-3-4.slip[.]io for C2") if i["type"] == "domain"}
+    assert "slip.io" not in domains
+    assert "1-2-3-4.slip.io" in domains

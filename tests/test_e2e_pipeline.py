@@ -6,7 +6,7 @@ PDF upload -> text extraction -> IOC extraction & normalization -> DB persistenc
 
 import io
 from pathlib import Path
-import fitz  # PyMuPDF
+import pymupdf as fitz  # PyMuPDF
 import pytest
 from fastapi.testclient import TestClient
 

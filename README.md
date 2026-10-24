@@ -59,11 +59,13 @@ ThreatMap/
 │           ├── IOCTable.jsx        # Category-filtered monospace IOC table with copy & search
 │           └── UploadZone.jsx      # Drag-and-drop PDF upload component with 50MB check
 ├── eval/
-│   ├── evidence_review_sheet.md    # Evidence review of edge cases (tangible-drink, Maui 31-char, uncertains)
-│   ├── ground_truth_subset.json    # Consolidated ground-truth dataset with provenance metadata
-│   ├── ioc_eval.py                 # Ground-truth evaluation script (Precision, Recall, F1)
-│   ├── review_queue_subset.csv     # 139-candidate human review queue with context snippets
-│   └── review_report.md            # Comprehensive candidate review report
+│   ├── raw_reports/                # Source CISA/NCSC/Mandiant PDFs used for evaluation (tracked)
+│   ├── review_queue_subset.csv     # 139-candidate tuning queue (auto-generated, kept byte-for-byte)
+│   ├── manual_review.csv           # Human labels for those 139 rows (reviewed by Ashhal)
+│   ├── heldout_review.csv          # 1,028-candidate held-out set, AI-assisted labels (not human-verified)
+│   ├── evaluate_annotations.py     # Scores the extractor against a reviewed CSV (P/R/F1 per type)
+│   ├── ioc_eval.py                 # P/R/F1 engine; default run uses synthetic fixtures only
+│   └── test_data/                  # Synthetic fixtures for unit tests (never quote as results)
 └── tests/
     ├── test_annotation_workflow.py # Annotation review queue & JSON dataset tests
     ├── test_e2e_pipeline.py        # End-to-end integration tests (Upload -> DB -> API)
@@ -198,12 +200,16 @@ The `ioc_service.py` module applies deterministic regular expressions and post-e
 5. **Abused Public Services (file sharing, tunnelling, scanning, email):**
    - Reports often name services the actors abused, e.g. `ufile[.]io`, `sendspace[.]com`, `ngrok[.]io`, `Shodan[.]io`, `rambler[.]ru`. The service apex is not adversary infrastructure.
    - *Behavior:* Known services are filtered via `PLATFORM_HOSTING_DOMAINS` / `PUBLIC_EMAIL_PROVIDERS`. Per-user subdomain services (`sslip.io`, `ngrok.io`) filter **only the bare apex**, so `149.248.35.200.sslip.io` and `<random>.ngrok.io` are still extracted.
-   - *Limitation:* The lists are curated, so an unlisted service will still be extracted. Bare service URLs such as `https://ufile[.]io` in an exfiltration list remain false positives.
+   - Bare service roots on these platforms (`https://www.sendspace[.]com`, `https://ufile[.]io`) are not extracted as URLs, since there is no actor-controlled path; paths on them (`https://ufile[.]io/abc123`) still are.
+   - *Limitation:* The lists are curated, so an unlisted service will still be extracted.
 6. **Registry Hive and Other File Names That Use Real TLDs:**
    - `sam.hiv`, `system.hiv` are Windows registry dumps, but `.hiv` is a real TLD. `.hiv` is treated as a file extension. Other real-TLD collisions (e.g. `.zip`, `.mov`) depend on the extension list.
 7. **WHOIS / RDAP Network Ranges:**
    - Network blocks in WHOIS output (`inetnum: 179.60.147.0/24`) are excluded via CIDR / `inetnum` / `NetRange` context; host IPs on the same line format are kept.
-8. **Closed-World Recall:**
+8. **Indicators Wrapped Across PDF Lines:**
+   - A domain broken at a dot, defanged dot or hyphen (`update.evil-` / `cdn.com`, `evil[.]` / `com`) is rejoined, and the fragments are not reported separately. A plain `word.` at a line end is treated as a sentence end.
+   - *Limitation:* A break with no punctuation (`split-dom` / `ain.com`) cannot be told apart from two tokens, so only the second fragment is extracted.
+9. **Closed-World Recall:**
    - Recall is computed only over the reviewed candidate pool (production extractor + permissive regex + manual inspection). Indicators that no pass surfaced (e.g. a domain broken by an odd defang like `forticloud.[]online`) are not counted as false negatives.
 
 ---
@@ -214,11 +220,18 @@ The evaluation suite (`eval/`) provides an empirical assessment of extraction pe
 
 ```bash
 # Run evaluation benchmark
-python eval/ioc_eval.py
+# Tuning set: 139 human-reviewed candidates from 3 reports
+python -m eval.evaluate_annotations --review-queue eval/manual_review.csv --pdf-dir eval/raw_reports
+
+# Held-out set: 1,028 AI-assisted candidates from 12 reports
+python -m eval.evaluate_annotations --review-queue eval/heldout_review.csv --pdf-dir eval/raw_reports
 ```
 
+`python eval/ioc_eval.py` with no arguments scores the **synthetic** fixtures in `eval/test_data/` and is a smoke test only.
+
 ### Dataset Provenance & Safeguards
-- **Status:** All evaluation labels carry the tag `"verification_status": "ai_suggested_unverified"` until formally signed off by human security analysts.
+- **Tuning set (`manual_review.csv`, 139 rows):** labels were reviewed by a human (Ashhal), with verbatim evidence and notes per row. The extractor was tuned on these reports, so scores here are not a generalisation estimate.
+- **Held-out set (`heldout_review.csv`, 1,028 rows):** labels are **AI-assisted and not human-verified**; every note is prefixed `[AI-labelled, not human-verified]`. Datasets exported from AI-assisted rows are tagged `"verification_status": "ai_suggested_unverified"`.
 - **Independence:** The evaluation review queue was generated by combining production extractor results, permissive discovery regex passes, and manual PDF inspection.
 - **Traceability:** Every candidate row contains the exact PDF filename, source page number, context snippet, and surrounding advisory text.
 - **Candidate Recall vs. Complete Document Recall:** Candidate-level recall ($1.0000$ or $100.0\%$) applies **strictly to the current reviewed candidate pool** ($FN = 0$ of 59 reviewed true IOCs). It does **not** represent complete, open-world document-level IOC recall across unannotated sections of the PDF reports.
@@ -244,9 +257,10 @@ python -m eval.evaluate_annotations --review-queue eval/heldout_review.csv --pdf
 | URL | 5 | 0.625 | 0.769 | 0.714 | 0.833 |
 | **Micro avg** | **347** | **0.943** | **0.971** | **0.991** | **0.996** |
 
-Recall is 1.000 in every column (closed world, see Limitation 8).
+Recall is 1.000 in every column (closed world, see Limitation 9).
 
 - **The "before fix" column is the true held-out result** and is the number to quote for generalisation.
 - The "after fix" column comes from filtering the false-positive classes found on this set (abused public services, reporting-contact domains, registry hive files, WHOIS ranges; see Limitations 5–7). Because those rules were chosen after seeing these labels, it is **optimistic** and only shows that the fix works, not how well the extractor generalises.
-- Original 3-report tuning set after the fix: micro P/R/F1 = 1.000 / 1.000 / 1.000 (no regression).
+- A second post-hoc pass (Oct 2026: bare service-root URLs on file-sharing platforms, `slip.io` apex) removes the last 3 false positives and gives 1.000 on this set. It is even more optimistic for the same reason and must not be quoted as a result.
+- Original 3-report tuning set after both fixes: micro P/R/F1 = 1.000 / 1.000 / 1.000 (no regression).
 

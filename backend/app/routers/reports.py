@@ -82,7 +82,8 @@ def process_report_pipeline(report_id: str, saved_path: Path, db: Session):
         report = db.query(Report).filter(Report.id == report_id).first()
         if report:
             report.status = "failed"
-            report.error_msg = str(e)
+            # PDF/validation errors are written for users; anything else stays in the server log
+            report.error_msg = str(e) if isinstance(e, (ValueError, TimeoutError)) else "Internal error while processing the report."
             db.commit()
 
 
@@ -115,10 +116,11 @@ async def upload_report(
         content = b"".join(chunks)
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to read uploaded file")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Failed to read uploaded file: {e}",
+            detail="Failed to read uploaded file.",
         )
 
     # Validate PDF content (%PDF- header and 50MB size limit)
@@ -134,10 +136,11 @@ async def upload_report(
     original_filename = file.filename or "uploaded_report.pdf"
     try:
         saved_path = save_upload_file(content, original_filename)
-    except Exception as e:
+    except Exception:
+        logger.exception("Could not save uploaded file to disk")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Could not save file to disk: {e}",
+            detail="Could not save the uploaded file.",
         )
 
     # Initialize report record
